@@ -1,8 +1,12 @@
 import re
 
+import sys
+
 import chromadb
 
 from sentence_transformers import SentenceTransformer
+
+from llm import rerank
 
 
 # ============================================================
@@ -49,8 +53,7 @@ print("Stored units:", collection.count())
 # ============================================================
 # 3. Get Developer Question
 # ============================================================
-
-question = input("\nEnter your question: ")
+question = sys.argv[1] if len(sys.argv) > 1 else input("\nEnter your question: ")
 
 
 # ============================================================
@@ -80,11 +83,26 @@ else:
 # 5. Extract Question Words
 # ============================================================
 
-question_words = set(
-    re.findall(
+STOPWORDS = {
+    "a", "an", "the", "is", "are", "was", "were",
+    "how", "what", "where", "when", "why", "which",
+    "who", "does", "do", "did", "can", "could",
+    "would", "should", "this", "that", "these",
+    "those", "to", "of", "in", "on", "for", "from",
+    "with", "and", "or", "as", "by"
+}
+
+question_words = {
+    word
+    for word in re.findall(
         r'[a-zA-Z0-9_]+',
         question.lower()
     )
+    if word not in STOPWORDS
+}
+
+retrieval_query = " ".join(
+    sorted(question_words)
 )
 
 
@@ -93,11 +111,11 @@ question_words = set(
 # ============================================================
 
 model = SentenceTransformer(
-    "all-MiniLM-L6-v2"
+    "BAAI/bge-base-en-v1.5"
 )
 
 question_embedding = model.encode(
-    question
+    retrieval_query
 )
 
 print("\nQuestion embedding created")
@@ -152,6 +170,10 @@ for i in range(
 
     metadata = results["metadatas"][0][i]
 
+    implementation_score = (
+    1 if metadata.get("abstract") is False else 0
+    )
+
     code = results["documents"][0][i]
 
 
@@ -189,13 +211,24 @@ for i in range(
     # --------------------------------------------------------
 
     identifier_matches = (
-        question_words &
-        identifier_words
+    question_words &
+    identifier_words
     )
 
     identifier_score = len(
-        identifier_matches
+    identifier_matches
     )
+
+    exact_identifier_score = 0
+
+    for identifier in identifiers:
+        identifier_tokens = normalize_identifier(identifier)
+
+        if all(
+            token in question_words
+            for token in identifier_tokens
+          ):
+          exact_identifier_score += 1
 
 
     # --------------------------------------------------------
@@ -284,11 +317,13 @@ for i in range(
     scored_results.append({
 
           "distance": distance,
-         "structural_score": structural_score,
+          "implementation_score": implementation_score,
+          "structural_score": structural_score,
           "structural_matches":
            sorted(set(structural_matches)),
          "identifier_score":
              identifier_score,
+        "exact_identifier_score": exact_identifier_score,
 
         "code_score":
             code_score,
@@ -328,20 +363,45 @@ for i in range(
 # ============================================================
 
 scored_results.sort(
-
     key=lambda x: (
-
+        -x["exact_identifier_score"],
+        -x["implementation_score"],
         -x["code_score"],
-
         -x["identifier_score"],
-
         x["distance"]
-
     )
-
 )
+top_results = scored_results[:10]
 
+for i, result in enumerate(top_results):
+    result["original_rank"] = i + 1
 
+llm_input = [
+    {
+        "rank": i + 1,
+        "source": r["source"],
+        "namespace": r["namespace"],
+        "class": r["class"],
+        "method": r["method"],
+        "type": r["type"],
+        "content": r["content"]
+    }
+    for i, r in enumerate(top_results)
+]
+
+reranked = rerank(question, llm_input)
+
+order = [
+    int(x)
+    for x in re.findall(r'\b\d+\b', reranked)
+    if 1 <= int(x) <= len(top_results)
+]
+
+scored_results = (
+    [top_results[i - 1] for i in order]
+    if order
+    else top_results
+)
 # ============================================================
 # 10. Display Results
 # ============================================================
@@ -362,8 +422,13 @@ for i, result in enumerate(
     print("\n" + "=" * 70)
 
     print(
-        "Rank:",
-        i + 1
+    "Final Rank:",
+    i + 1
+    )
+
+    print(
+    "Original Rank:",
+    result["original_rank"]
     )
 
     print(
@@ -439,3 +504,12 @@ for i, result in enumerate(
 print("\nYour question:")
 
 print(question)
+
+print(
+    "EVAL_RESULT|"
+    + str(scored_results[0]["original_rank"])
+    + "|"
+    + str(1)
+    + "|"
+    + scored_results[0]["source"]
+)

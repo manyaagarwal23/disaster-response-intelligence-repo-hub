@@ -175,7 +175,7 @@ print(
 print("\nLoading embedding model...")
 
 model = SentenceTransformer(
-    "all-MiniLM-L6-v2"
+    "BAAI/bge-base-en-v1.5"
 )
 
 

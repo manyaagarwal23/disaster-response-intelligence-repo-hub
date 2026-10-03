@@ -239,6 +239,8 @@ def extract_php_units(code):
 
                     "type": "method",
 
+                    "abstract": "abstract" in method_code,
+
                     "content": method_code,
 
                     "calls": calls,

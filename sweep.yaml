@@ -1,0 +1,17 @@
+# Sweep.dev configuration file
+# This tells the Sweep AI bot how to interact with this repository
+
+rules:
+  - "Follow PEP 8 style guidelines for Python code."
+  - "Use informative variable names and include docstrings for all functions."
+  - "For the frontend, ensure the Glassmorphism theme is preserved in CSS."
+
+# The main branch of the repository
+branch: 'main'
+
+# Allow Sweep to read and update GitHub Actions
+gha_enabled: true
+
+description: >
+  Disaster Response Intelligence Repo Hub is a Python/FastAPI RAG application.
+  The backend is in the `rag/` folder. The UI is in `rag/frontend/`.

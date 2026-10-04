@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disaster Response Intelligence Repo Hub</title>
+    <!-- Modern Typography: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons for modern, clean icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Background Image Container -->
+    <div class="bg-container"></div>
+    <div class="bg-overlay"></div>
+
+    <!-- App Container for Sidebar Layout -->
+    <div class="app-container">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <i class="ph ph-terminal-window"></i>
+                <span>Ushahidi AI</span>
+            </div>
+            <nav class="nav-tabs vertical">
+                <button class="tab-btn active" onclick="switchTab('home')">
+                    <i class="ph ph-chat-circle-dots"></i> Chat
+                </button>
+                <button class="tab-btn" onclick="switchTab('questions')">
+                    <i class="ph ph-list-magnifying-glass"></i> Test Dataset
+                </button>
+                <button class="tab-btn" onclick="switchTab('chat')">
+                    <i class="ph ph-clock-counter-clockwise"></i> History
+                </button>
+                <button class="tab-btn" onclick="switchTab('github')">
+                    <i class="ph ph-github-logo"></i> Repository
+                </button>
+                <button class="tab-btn" onclick="switchTab('about')">
+                    <i class="ph ph-info"></i> About
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- HOME TAB (Dynamic Chat Interface) -->
+            <section id="home" class="tab-content active home-layout">
+            
+            <!-- Hero / Header -->
+            <div id="chatHeader" class="chat-header">
+                <h1>Disaster Response<br>Intelligence Repo Hub</h1>
+                <p>Explore the Ushahidi codebase with <span class="highlight">AI</span>.<br>Ask architectural questions and get evidence-based answers with source code references.</p>
+            </div>
+
+            <!-- Chat messages area (hidden until first question is asked) -->
+            <div id="chatMessages" class="chat-messages hidden">
+                <!-- Messages will be appended here dynamically -->
+            </div>
+
+            <!-- Suggestions (hidden after first question is asked) -->
+            <div id="suggestionsBox" class="suggestions-container">
+                <p class="suggestions-title">Try an example:</p>
+                <div class="suggestions-row">
+                    <button class="suggestion-chip" onclick="fillSearch('How does the LanguagesController work?')">
+                        How does the LanguagesController work? <i class="ph ph-arrow-right"></i>
+                    </button>
+                    <button class="suggestion-chip" onclick="fillSearch('What data source plugins are supported?')">
+                        What data source plugins are supported? <i class="ph ph-arrow-right"></i>
+                    </button>
+                    <button class="suggestion-chip" onclick="fillSearch('Explain the V5 API structure.')">
+                        Explain the V5 API structure. <i class="ph ph-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search Bar (Fixed at the bottom of the section) -->
+            <div class="search-container" id="mainSearchContainer">
+                <div class="search-box">
+                    <i class="ph ph-magnifying-glass search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Ask a question about the Ushahidi codebase..." autocomplete="off">
+                    <button class="send-btn" onclick="askQuestion()">
+                        <i class="ph ph-paper-plane-right"></i>
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- HISTORY TAB -->
+        <section id="chat" class="tab-content">
+            <div class="page-container glass-panel">
+                <h2>Chat History</h2>
+                <p class="subtitle">Review previous questions and their detailed evaluations.</p>
+                <div id="chatHistoryList" class="history-list">
+                    <div class="empty-state">No questions asked yet. Start asking on the Home tab!</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GITHUB TAB -->
+        <section id="github" class="tab-content">
+            <div class="page-container glass-panel" style="max-width: 900px; margin: 0 auto;">
+                
+                <div class="repo-about-header" style="text-align: center; margin-bottom: 3rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2rem;">
+                    <i class="ph ph-globe" style="color: #fbbf24; font-size: 2.5rem; margin-bottom: 0.5rem;"></i>
+                    <h2 style="font-size: 1.8rem; margin-bottom: 0.3rem;">Ushahidi Repository</h2>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1rem;">Open-source crisis-mapping platform</p>
+                    <p style="font-weight: 500; font-size: 1.05rem;">A platform that collects information from the ground during crises and visualizes reports on maps to help responders identify where assistance may be needed.</p>
+                </div>
+
+                <h3 style="margin-bottom: 1.2rem; font-size: 1.2rem;">What does this repository contain?</h3>
+                <div class="repo-grid">
+                    <div class="info-card repo-grid-card">
+                        <i class="ph ph-broadcast" style="color: #60a5fa;"></i>
+                        <h4>Data sources</h4>
+                        <p>Incoming reports from SMS, email, social media and web forms.</p>
+                    </div>
+                    <div class="info-card repo-grid-card">
+                        <i class="ph ph-clipboard-text" style="color: #fbbf24;"></i>
+                        <h4>Posts and surveys</h4>
+                        <p>Structures collected reports and submitted information.</p>
+                    </div>
+                    <div class="info-card repo-grid-card">
+                        <i class="ph ph-map-pin" style="color: #4ade80;"></i>
+                        <h4>Geolocation and maps</h4>
+                        <p>Handles location data and crisis-map functionality.</p>
+                    </div>
+                    <div class="info-card repo-grid-card">
+                        <i class="ph ph-git-branch" style="color: #a78bfa;"></i>
+                        <h4>REST API</h4>
+                        <p>Exposes platform functionality through API endpoints.</p>
+                    </div>
+                    <div class="info-card repo-grid-card">
+                        <i class="ph ph-shield-check" style="color: #f472b6;"></i>
+                        <h4>Roles and permissions</h4>
+                        <p>Controls user access and permissions.</p>
+                    </div>
+                    <div class="info-card repo-grid-card">
+                        <i class="ph ph-flask" style="color: #2dd4bf;"></i>
+                        <h4>Tests</h4>
+                        <p>Supporting tests for repository functionality.</p>
+                    </div>
+                </div>
+
+                <h3 style="margin: 3rem 0 1.2rem 0; font-size: 1.2rem;">How does Ushahidi work?</h3>
+                <div class="repo-flow">
+                    <div class="info-card repo-flow-card" style="border-color: rgba(59, 130, 246, 0.5);">
+                        <i class="ph ph-chats-circle" style="color: #60a5fa;"></i>
+                        <div>
+                            <h4>Information collection</h4>
+                            <p>Reports arrive from different channels</p>
+                        </div>
+                    </div>
+                    <i class="ph ph-arrow-down repo-flow-arrow"></i>
+                    
+                    <div class="info-card repo-flow-card" style="border-color: rgba(251, 191, 36, 0.5);">
+                        <i class="ph ph-funnel" style="color: #fbbf24;"></i>
+                        <div>
+                            <h4>Report processing</h4>
+                            <p>Information is organized into posts and surveys</p>
+                        </div>
+                    </div>
+                    <i class="ph ph-arrow-down repo-flow-arrow"></i>
+                    
+                    <div class="info-card repo-flow-card" style="border-color: rgba(74, 222, 128, 0.5);">
+                        <i class="ph ph-map-pin" style="color: #4ade80;"></i>
+                        <div>
+                            <h4>Geolocation</h4>
+                            <p>Location data is associated with reports</p>
+                        </div>
+                    </div>
+                    <i class="ph ph-arrow-down repo-flow-arrow"></i>
+                    
+                    <div class="info-card repo-flow-card" style="border-color: rgba(167, 139, 250, 0.5);">
+                        <i class="ph ph-book-open" style="color: #a78bfa;"></i>
+                        <div>
+                            <h4>Crisis mapping</h4>
+                            <p>Reports are displayed for responders to explore</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 3rem 0 1.2rem 0; font-size: 1.2rem;">Why is this codebase significant?</h3>
+                <div class="repo-text-block">
+                    <p style="margin-bottom: 1rem; line-height: 1.6; font-weight: 500;">Ushahidi is a large, interconnected PHP codebase. Understanding how its modules, classes, APIs and permissions work together can be challenging for developers who are new to the repository.</p>
+                    <p style="color: var(--text-muted); line-height: 1.6;">This makes it a useful real-world codebase for exploring software architecture, dependencies and the relationships between components.</p>
+                </div>
+                
+                <div style="margin-top: 3.5rem; text-align: center;">
+                    <a href="https://github.com/ushahidi/platform" target="_blank" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.8rem 1.5rem; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid var(--glass-border); color: var(--text-main); text-decoration: none; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                        <i class="ph ph-github-logo" style="font-size: 1.2rem;"></i> View Source on GitHub
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- QUESTIONS TAB -->
+        <section id="questions" class="tab-content">
+            <div class="page-container glass-panel">
+                <h2>Test Dataset</h2>
+                <p class="subtitle">Highly effective questions designed to demonstrate the RAG pipeline's hybrid search accuracy.</p>
+                
+                <div class="question-category">
+                    <h3 style="color: var(--text-primary); margin-bottom: 0.5rem; font-size: 1.1rem;">⚙️ Architecture & Contracts</h3>
+                    <ul class="dataset-list">
+                        <li>Where is the EntityExists contract defined?</li>
+                        <li>What does EntityExists::exists() define?</li>
+                        <li>Where is verifyEntityLoaded declared abstract and where is it implemented?</li>
+                        <li>What exception is thrown when an entity cannot be found?</li>
+                        <li>How does the system verify that an entity was actually loaded?</li>
+                        <li>Which repository method is used to load an entity before verification?</li>
+                        <li>Where is the actual implementation of verifyEntityLoaded?</li>
+                        <li>Which use cases call verifyEntityLoaded?</li>
+                        <li>Show me how the EntityExists interface is structured.</li>
+                        <li>What happens if the exists() method returns false?</li>
+                    </ul>
+                </div>
+
+                <div class="question-category" style="margin-top: 1.5rem;">
+                    <h3 style="color: var(--text-primary); margin-bottom: 0.5rem; font-size: 1.1rem;">🧩 Posts & Usecases</h3>
+                    <ul class="dataset-list">
+                        <li>What happens after an entity is loaded in UpdateUsecase?</li>
+                        <li>Where is verifyEntityLoaded implemented and which parts of the system call it?</li>
+                        <li>Show me the code for the UpdateUsecase class.</li>
+                        <li>What dependencies are injected into the UpdateUsecase?</li>
+                        <li>How does the CreateSetPost usecase work?</li>
+                        <li>Show me how a post is updated in the system.</li>
+                        <li>What methods does the PostRepository provide?</li>
+                        <li>How does the system handle fetching entities from the database?</li>
+                        <li>Which classes implement the EntityExists contract?</li>
+                        <li>Explain what the ReadUsecase does.</li>
+                    </ul>
+                </div>
+
+                <div class="question-category" style="margin-top: 1.5rem;">
+                    <h3 style="color: var(--text-primary); margin-bottom: 0.5rem; font-size: 1.1rem;">🔍 Security & Permissions</h3>
+                    <ul class="dataset-list">
+                        <li>How does the system prevent an unauthorized user from creating a post?</li>
+                        <li>Where is the user's role checked when creating a post?</li>
+                        <li>Where is the permission to create a post checked?</li>
+                        <li>How does the system determine which roles can create posts?</li>
+                        <li>How does the system check whether a user has Manage Posts permission?</li>
+                        <li>Show me the code that validates user permissions.</li>
+                        <li>How does the API prevent unauthorized access to usecases?</li>
+                        <li>What happens when a user without permissions tries to update a post?</li>
+                        <li>Explain how roles are assigned to users in the system.</li>
+                        <li>How does the system validate input data before creating a post?</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- ABOUT TAB -->
+        <section id="about" class="tab-content">
+            <div class="page-container glass-panel" style="max-width: 900px; margin: 0 auto;">
+                
+                <!-- HEADER -->
+                <div style="text-align: center; margin-bottom: 3rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2.5rem;">
+                    <p style="text-transform: uppercase; letter-spacing: 2px; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 1.5rem;">About our project</p>
+                    <i class="ph ph-cpu" style="color: #fbbf24; font-size: 3rem; margin-bottom: 1rem;"></i>
+                    <h2 style="font-size: 2.2rem; margin-bottom: 1rem;">Disaster Response Intelligence Repo Hub</h2>
+                    <p style="font-size: 1.05rem; color: var(--text-muted); margin-bottom: 2rem; max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.6; font-style: italic;">An AI-powered repository onboarding assistant that helps developers explore, understand and navigate complex codebases using natural language.</p>
+                    
+                    <div style="display: flex; gap: 0.8rem; justify-content: center; flex-wrap: wrap;">
+                        <span style="padding: 0.4rem 1rem; border: 1px solid var(--glass-border); border-radius: 20px; font-size: 0.8rem; font-weight: 600; background: rgba(255,255,255,0.05);">Retrieval-Augmented Generation</span>
+                        <span style="padding: 0.4rem 1rem; border: 1px solid var(--glass-border); border-radius: 20px; font-size: 0.8rem; font-weight: 600; background: rgba(255,255,255,0.05);">Code Intelligence</span>
+                        <span style="padding: 0.4rem 1rem; border: 1px solid var(--glass-border); border-radius: 20px; font-size: 0.8rem; font-weight: 600; background: rgba(255,255,255,0.05);">AI Developer Assistant</span>
+                    </div>
+                </div>
+
+                <!-- What is this project -->
+                <h3 style="font-size: 1.3rem; margin-bottom: 1rem;">What is this project?</h3>
+                <p style="line-height: 1.6; margin-bottom: 1rem; color: var(--text-main); font-size: 0.95rem;">Disaster Response Intelligence Repo Hub is an AI-powered chatbot designed to help developers understand large and unfamiliar codebases. It uses Retrieval-Augmented Generation (RAG) to search repository code, retrieve relevant information and generate context-based explanations with source references.</p>
+                <p style="line-height: 1.6; margin-bottom: 2rem; color: var(--text-main); font-size: 0.95rem;">Instead of manually searching through thousands of lines of PHP code, developers can ask questions in plain English and receive understandable explanations about classes, methods, dependencies and workflows.</p>
+                
+                <div class="info-card" style="border-color: rgba(59, 130, 246, 0.4); padding: 1.5rem 2rem; display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 4rem;">
+                    <div style="display: flex; gap: 1rem; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 1.5rem;">
+                        <i class="ph ph-chat-text" style="color: #60a5fa; font-size: 1.5rem; margin-top: 0.2rem;"></i>
+                        <div>
+                            <h4 style="font-size: 1rem; margin-bottom: 0.4rem;">Ask in natural language</h4>
+                            <p style="color: var(--text-muted); font-size: 0.9rem;">For example: "Where is an incoming SMS report parsed?"</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 1.5rem;">
+                        <i class="ph ph-magnifying-glass" style="color: #4ade80; font-size: 1.5rem; margin-top: 0.2rem;"></i>
+                        <div>
+                            <h4 style="font-size: 1rem; margin-bottom: 0.4rem;">Retrieve relevant code</h4>
+                            <p style="color: var(--text-muted); font-size: 0.9rem;">The system searches the indexed Ushahidi repository to find relevant source chunks.</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                        <i class="ph ph-lightbulb" style="color: #fbbf24; font-size: 1.5rem; margin-top: 0.2rem;"></i>
+                        <div>
+                            <h4 style="font-size: 1rem; margin-bottom: 0.4rem;">Understand the answer</h4>
+                            <p style="color: var(--text-muted); font-size: 0.9rem;">The AI generates an explanation grounded in the retrieved context, with source references.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Combined Features and Workflow -->
+                <h3 style="font-size: 1.3rem; margin-bottom: 1.5rem;">Key Features & How it Works</h3>
+                
+                <div class="repo-grid" style="margin-bottom: 3rem;">
+                    <div class="info-card repo-grid-card">
+                        <i class="ph ph-chat-circle-dots" style="color: #60a5fa;"></i>
+                        <h4>AI Code Chat</h4>
+                        <p>Ask repository-related questions using natural language.</p>
+                    </div>
+                    <div class="info-card repo-grid-card">
+                        <i class="ph ph-magnifying-glass" style="color: #a78bfa;"></i>
+                        <h4>Semantic Search</h4>
+                        <p>Find relevant code by meaning, even without knowing exact names.</p>
+                    </div>
+                    <div class="info-card repo-grid-card">
+                        <i class="ph ph-file-code" style="color: #fbbf24;"></i>
+                        <h4>Source References</h4>
+                        <p>Connect explanations to relevant repository files and code.</p>
+                    </div>
+                    <div class="info-card repo-grid-card">
+                        <i class="ph ph-git-merge" style="color: #4ade80;"></i>
+                        <h4>Visual Explanations</h4>
+                        <p>Present supported code relationships, workflows and diagrams.</p>
+                    </div>
+                    <div class="info-card repo-grid-card">
+                        <i class="ph ph-database" style="color: #38bdf8;"></i>
+                        <h4>Repository Knowledge Base</h4>
+                        <p>Search indexed code chunks stored in ChromaDB.</p>
+                    </div>
+                    <div class="info-card repo-grid-card">
+                        <i class="ph ph-check-circle" style="color: #f472b6;"></i>
+                        <h4>Testing and Evaluation</h4>
+                        <p>Use automated tests and evaluation scripts to assess system behavior.</p>
+                    </div>
+                </div>
+
+                <p style="color: var(--text-muted); margin-bottom: 2rem; font-size: 0.95rem;">The Retrieval-Augmented Generation (RAG) pipeline workflow</p>
+                
+                <div class="repo-flow" style="margin-bottom: 2rem;">
+                    <div class="info-card repo-flow-card" style="border-color: rgba(59, 130, 246, 0.4);">
+                        <i class="ph ph-folder-open" style="color: #60a5fa;"></i>
+                        <div>
+                            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); letter-spacing: 1px;">STEP 1</span>
+                            <h4 style="margin-top: 0.2rem;">Code ingestion</h4>
+                            <p>Collect PHP source files from the Ushahidi repository.</p>
+                        </div>
+                    </div>
+                    <i class="ph ph-arrow-down repo-flow-arrow"></i>
+                    
+                    <div class="info-card repo-flow-card" style="border-color: rgba(167, 139, 250, 0.4);">
+                        <i class="ph ph-scissors" style="color: #a78bfa;"></i>
+                        <div>
+                            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); letter-spacing: 1px;">STEP 2</span>
+                            <h4 style="margin-top: 0.2rem;">Chunking and extraction</h4>
+                            <p>Extract code structure and split source files into searchable chunks.</p>
+                        </div>
+                    </div>
+                    <i class="ph ph-arrow-down repo-flow-arrow"></i>
+                    
+                    <div class="info-card repo-flow-card" style="border-color: rgba(251, 191, 36, 0.4);">
+                        <i class="ph ph-code" style="color: #fbbf24;"></i>
+                        <div>
+                            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); letter-spacing: 1px;">STEP 3</span>
+                            <h4 style="margin-top: 0.2rem;">Embedding generation</h4>
+                            <p>Sentence Transformers convert code chunks into vector representations.</p>
+                        </div>
+                    </div>
+                    <i class="ph ph-arrow-down repo-flow-arrow"></i>
+                    
+                    <div class="info-card repo-flow-card" style="border-color: rgba(56, 189, 248, 0.4);">
+                        <i class="ph ph-database" style="color: #38bdf8;"></i>
+                        <div>
+                            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); letter-spacing: 1px;">STEP 4</span>
+                            <h4 style="margin-top: 0.2rem;">Vector storage</h4>
+                            <p>Store embeddings and metadata in ChromaDB.</p>
+                        </div>
+                    </div>
+                    <i class="ph ph-arrow-down repo-flow-arrow"></i>
+
+                    <div class="info-card repo-flow-card" style="border-color: rgba(244, 114, 182, 0.4);">
+                        <i class="ph ph-funnel" style="color: #f472b6;"></i>
+                        <div>
+                            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); letter-spacing: 1px;">STEP 5</span>
+                            <h4 style="margin-top: 0.2rem;">Retrieval and ranking</h4>
+                            <p>Retrieve relevant code chunks and rank them according to the question.</p>
+                        </div>
+                    </div>
+                    <i class="ph ph-arrow-down repo-flow-arrow"></i>
+
+                    <div class="info-card repo-flow-card" style="border-color: rgba(74, 222, 128, 0.4);">
+                        <i class="ph ph-brain" style="color: #4ade80;"></i>
+                        <div>
+                            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); letter-spacing: 1px;">STEP 6</span>
+                            <h4 style="margin-top: 0.2rem;">Answer generation</h4>
+                            <p>The LLM generates a grounded explanation using the selected context.</p>
+                        </div>
+                    </div>
+                    <i class="ph ph-arrow-down repo-flow-arrow"></i>
+
+                    <div class="info-card repo-flow-card" style="border-color: rgba(251, 146, 60, 0.4);">
+                        <i class="ph ph-layout" style="color: #fb923c;"></i>
+                        <div>
+                            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); letter-spacing: 1px;">STEP 7</span>
+                            <h4 style="margin-top: 0.2rem;">Visual response</h4>
+                            <p>Display the answer, source references and supported visualizations in the UI.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        </main>
+    </div>
+
+    <!-- Markdown and Mermaid Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="/static/js/script.js"></script>
+</body>
+</html>

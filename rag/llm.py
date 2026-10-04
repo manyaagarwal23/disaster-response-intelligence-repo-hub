@@ -1,6 +1,7 @@
 import os
-import requests
-MODEL = os.getenv("LLM_MODEL", "openrouter/free")
+from langchain_groq import ChatGroq
+from langchain_core.messages import HumanMessage
+MODEL = "qwen/qwen3.8-27b"
 
 def rerank(question, results):
     prompt = f"""
@@ -40,21 +41,17 @@ Return ONLY the result numbers in order, separated by commas.
 Example: 4, 1, 7
 """
 
-    response = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": "Bearer " + os.environ["OPENROUTER_API_KEY"],
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": MODEL,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
-            "temperature": 0
-        }
-    )
+    if "GROQ_API_KEY" not in os.environ:
+        return ", ".join(str(i + 1) for i in range(len(results)))
 
-    response.raise_for_status()
-
-    return (response.json()["choices"][0]["message"].get("content") or "").strip()
+    try:
+        llm = ChatGroq(
+            groq_api_key=os.environ["GROQ_API_KEY"],
+            model_name=MODEL,
+            temperature=0
+        )
+        response = llm.invoke([HumanMessage(content=prompt)])
+        return response.content.strip()
+    except Exception as e:
+        print(f"LangChain Reranking error: {e}")
+        return ", ".join(str(i + 1) for i in range(len(results)))

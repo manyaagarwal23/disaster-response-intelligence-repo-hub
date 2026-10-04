@@ -2,3 +2,8 @@ chromadb
 sentence-transformers
 tree-sitter
 tree-sitter-php
+fastapi
+uvicorn
+langchain
+langchain-groq
+pytest

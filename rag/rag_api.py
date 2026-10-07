@@ -1,7 +1,7 @@
-import os
 import time
 
 import config
+import llm
 from generator import GenerationError, generate_answer
 from retrieval import get_retriever
 
@@ -113,14 +113,24 @@ def get_rag_answer(question):
             answer["diagram_type"] = "mermaid"
             answer["diagram_code"] = answer["fallback_diagram_code"]
 
+    provider = llm.last_provider() if answer is not None else None
+
+    if provider and provider.startswith("ollama") and warning is None:
+
+        warning = (
+            f"Every Groq key is rate-limited right now, so the local {provider.split(':', 1)[1]} model wrote "
+            "this short answer (slower and less precise). The diagram is built from the retrieved code."
+        )
+
     if answer is None and warning is None:
 
-        warning = "GROQ_API_KEY is not set: showing search results only."
+        warning = "No LLM configured (GROQ_API_KEY / GROQ_API_KEYS or OLLAMA_MODEL): showing search results only."
 
     return {
         "answer": answer,
         "sources": [to_source(r) for r in results[:EVIDENCE_K]],
         "llm_used": answer is not None,
+        "llm_provider": provider,
         "warning": warning,
         "timings": {
             **retrieval["timings"],
@@ -154,6 +164,12 @@ def get_stats():
 
     stats["llm_model"] = config.GROQ_MODEL
 
-    stats["llm_configured"] = bool(os.environ.get("GROQ_API_KEY"))
+    keys = config.groq_api_keys()
+
+    stats["llm_configured"] = bool(keys) or bool(config.ollama_model())
+
+    stats["llm_keys"] = len(keys)
+
+    stats["fallback_model"] = config.ollama_model() or None
 
     return stats

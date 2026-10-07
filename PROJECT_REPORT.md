@@ -22,7 +22,7 @@ We achieve this using **Retrieval-Augmented Generation (RAG)**, plus a fast CI p
 *   **tree-sitter (PHP grammar):** parses PHP into a syntax tree so we can cut the code at real boundaries (methods, functions, interfaces, traits) instead of arbitrary character counts.
 *   **SentenceTransformers (`BAAI/bge-base-en-v1.5`):** turns code and questions into 768-dimensional vectors.
 *   **ChromaDB:** a local vector database. It stores the vectors and finds the code closest in *meaning* to a question (cosine similarity).
-*   **LangChain + Groq:** calls a cloud LLM (default `qwen/qwen3.8-27b`, configurable with `GROQ_MODEL`) to rerank results and write the final answer. **Optional:** without an API key, or when Groq is rate-limited, the tool still works as a semantic search engine.
+*   **LangChain + Groq:** calls a cloud LLM (default `qwen/qwen3.8-27b`, configurable with `GROQ_MODEL`) to rerank results and write the final answer. Several keys can be chained (`GROQ_API_KEYS`, tried in order); when all are exhausted the local **Ollama** model (`OLLAMA_MODEL`, `llama3.2:3b` on the dev VM) writes the answer. Without any LLM the tool still works as a semantic search engine.
 
 ### Frontend (UI)
 *   **HTML / CSS / vanilla JavaScript**, the "Beacon" theme (dark by default, light theme toggle in the sidebar), with highlight.js for syntax-highlighted evidence.
@@ -78,7 +78,7 @@ On every push, GitHub Actions lints and runs the unit tests in about a minute. O
 *   **`config.py`**: every path and setting in one place, overridable with environment variables; loads `.env`.
 *   **`app.py`**: the web server. Start it with `python app.py`.
 *   **`retrieval.py`**: the search engine, shared by the web app, the CLI and the evaluation; records timings. Also holds an optional BM25 keyword index (`LEXICAL_CANDIDATES`, off by default: measured, no gain).
-*   **`llm.py`**: the Groq client, rate-limit-aware retries, and the reranker.
+*   **`llm.py`**: the LLM client: Groq key chain with rate-limit handling, local Ollama fallback, and the reranker.
 *   **`generator.py`**: builds the answer prompt and parses the LLM's JSON.
 *   **`rag_api.py`**: glues retrieval and generation together; also serves Code Search and stats.
 *   **`search.py`**: command-line search (`python search.py "your question"`).

@@ -102,3 +102,38 @@ LEXICAL_CANDIDATES = int(os.environ.get("LEXICAL_CANDIDATES", "0"))
 RERANK_TOP_K = int(os.environ.get("RERANK_TOP_K", "25"))
 
 RERANK_PREVIEW_CHARS = int(os.environ.get("RERANK_PREVIEW_CHARS", "320"))
+
+
+# ------------------------------------------------------------
+# LLM providers
+# ------------------------------------------------------------
+# Groq keys are tried strictly in order for every request: key 1, and on
+# a rate limit key 2, 3, ... When all are exhausted the local Ollama
+# model (OLLAMA_MODEL, e.g. "llama3.2:3b") writes the answer. Read at call
+# time so tests and tools can change the environment.
+
+def groq_api_keys():
+    """Ordered list of Groq API keys from GROQ_API_KEYS (comma-separated) or GROQ_API_KEY."""
+
+    raw = os.environ.get("GROQ_API_KEYS") or os.environ.get("GROQ_API_KEY", "")
+
+    return [key.strip() for key in raw.split(",") if key.strip()]
+
+
+def ollama_model():
+    """Name of the local Ollama fallback model, or "" when disabled."""
+
+    return os.environ.get("OLLAMA_MODEL", "").strip()
+
+
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+
+# CPU inference of a 3B model is slow (measured on the dev VM: ~30 s to
+# read a 1.2K-token prompt, then 0.6-1.5 tokens/s), so the local model
+# writes only a short plain-text summary and gets several minutes for it
+OLLAMA_TIMEOUT = int(os.environ.get("OLLAMA_TIMEOUT", "420"))
+
+OLLAMA_MAX_TOKENS = int(os.environ.get("OLLAMA_MAX_TOKENS", "160"))
+
+# Context window requested from Ollama (KV cache memory grows with it)
+OLLAMA_NUM_CTX = int(os.environ.get("OLLAMA_NUM_CTX", "4096"))

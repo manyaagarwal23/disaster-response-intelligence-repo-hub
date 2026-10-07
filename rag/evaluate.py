@@ -6,7 +6,7 @@ We then check where the first correct file appears in each ranking:
 
   semantic - vector search only (the baseline)
   hybrid   - vector search + identifier/code/structural scoring
-  llm      - hybrid + Groq LLM reranking (only when GROQ_API_KEY is set)
+  llm      - hybrid + Groq LLM reranking (only when a Groq key is set)
 
 Metrics (computed over the top K = 10 results):
   MRR@10 - mean of 1/rank of the first correct result (0 if not found)
@@ -25,7 +25,6 @@ Usage:
 import argparse
 import datetime
 import json
-import os
 import time
 from pathlib import Path
 
@@ -151,7 +150,7 @@ def main():
 
     retriever = get_retriever()
 
-    use_llm = not args.no_llm and bool(os.environ.get("GROQ_API_KEY"))
+    use_llm = not args.no_llm and bool(config.groq_api_keys())
 
     systems = ["semantic", "hybrid"] + (["llm"] if use_llm else [])
 
@@ -234,7 +233,7 @@ def main():
 
     if not use_llm:
 
-        print("LLM reranking not evaluated (no GROQ_API_KEY or --no-llm).")
+        print("LLM reranking not evaluated (no Groq key or --no-llm).")
 
     # --------------------------------------------------------
     # Persist (never only on screen)

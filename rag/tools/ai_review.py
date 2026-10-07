@@ -215,7 +215,7 @@ def main():
 
     if llm is None:
 
-        print("GROQ_API_KEY is not set: skipping AI review.")
+        print("No LLM configured (GROQ_API_KEY/GROQ_API_KEYS or OLLAMA_MODEL): skipping AI review.")
 
         return
 

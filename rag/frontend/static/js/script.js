@@ -270,6 +270,11 @@ function renderRichAnswer(aiMsgId, data) {
         html += `<span class="meta-chip" title="LLM answer generation"><i class="ph ph-brain"></i> answer ${fmtMs(t.generation_ms)}</span>`;
     }
     html += `<span class="meta-chip"><i class="ph ph-files"></i> ${sources.length} sources</span>`;
+    if (data.llm_provider && String(data.llm_provider).startsWith('ollama')) {
+        html += `<span class="meta-chip strong" title="Every Groq key was rate-limited, so the local model wrote this answer"><i class="ph ph-cpu"></i> local ${escapeHtml(String(data.llm_provider).split(':').slice(1).join(':'))}</span>`;
+    } else if (data.llm_provider && String(data.llm_provider).startsWith('groq#')) {
+        html += `<span class="meta-chip" title="Which Groq key answered"><i class="ph ph-key"></i> key ${escapeHtml(String(data.llm_provider).slice(5))}</span>`;
+    }
     if (answer.simple) html += `<button class="icon-btn" onclick="copyAnswer(this)" title="Copy the answer as text"><i class="ph ph-copy"></i> Copy</button>`;
     html += `</div><div class="answer-stack">`;
 

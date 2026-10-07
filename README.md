@@ -10,7 +10,7 @@ An AI onboarding assistant for the [Ushahidi](https://github.com/ushahidi/platfo
 |---|---|
 | **Ask** | Plain-English questions → AI Summary, Technical Details, an architecture diagram (Mermaid) and the *actually retrieved* code as evidence, with file + line numbers, syntax highlighting and GitHub links. Every answer shows its timing; a pipeline stepper shows progress. Dark and light theme. |
 | **Code Search** | Instant semantic + identifier search over every indexed chunk, no LLM, well under a second. "Explain with AI" hands any hit to the Ask tab. |
-| **Works without an LLM** | No `GROQ_API_KEY`, or Groq down / rate-limited → you still get the search results, with a clear warning. |
+| **Never goes dark** | Up to N Groq keys tried in order, then the local Ollama model; with no LLM at all you still get the search results, with a clear warning. |
 | **Measured, not claimed** | `evaluate.py` scores retrieval against a 33-question ground-truth dataset (MRR, Hit@k, latency) and saves every run under `reports/eval/`. |
 | **Safety net for rushed changes** | GitHub Actions: lint + unit tests in ~1 min, Docker build + integration tests, and on pull requests an AI review of the diff plus auto-generated regression tests. |
 | **One-command deploy** | Docker image with the embedding model baked in; `docker compose up` builds the vector DB on first start. `deploy/` has the EC2 / VM script. |
@@ -21,7 +21,7 @@ An AI onboarding assistant for the [Ushahidi](https://github.com/ushahidi/platfo
 |---|---|
 | Interface | FastAPI web UI (HTML/CSS/JS, Marked + DOMPurify, Mermaid), CLI (`search.py`) |
 | Application | `retrieval.py` (hybrid search), `rag_api.py`, `generator.py`, `llm.py` |
-| Model | Groq API, `qwen/qwen3.8-27b` by default (`GROQ_MODEL` to change) |
+| Model | Groq API, `qwen/qwen3.8-27b` by default (`GROQ_MODEL` to change), key chain via `GROQ_API_KEYS`; local fallback `llama3.2:3b` through Ollama |
 | Data | ChromaDB (cosine), Sentence Transformers `BAAI/bge-base-en-v1.5`, tree-sitter PHP parser |
 | DevOps | GitHub Actions, Docker / Compose, Ruff, Pytest, `tools/ai_review.py`, `tools/generate_tests.py` |
 
@@ -53,7 +53,7 @@ Question ──► retrieval.py
 │   ├── chunking.py          # Chunk building, embedding text, metadata
 │   ├── ingestion.py         # Builds the ChromaDB vector database
 │   ├── retrieval.py         # Shared hybrid search (API, CLI, evaluation)
-│   ├── llm.py               # Groq client, rate-limit-aware retries, reranker
+│   ├── llm.py               # Groq key chain + local Ollama fallback, reranker
 │   ├── generator.py         # Answer generation + JSON parsing
 │   ├── rag_api.py           # Ask / search / stats for one request
 │   ├── search.py            # CLI search
@@ -179,9 +179,28 @@ python rag/tools/ai_review.py --base origin/main        # → reports/ai-review-
 cd rag && python tools/generate_tests.py --all           # → tests/generated/, reports/generated-tests-<date>.md
 ```
 
-## ⚠️ Groq free-tier limits
+## 🔑 LLM providers: key chain + local fallback
 
-`qwen/qwen3.8-27b` on the free tier allows about **30 requests, 8K input tokens and 1K output tokens per minute, 200K tokens per day**. The app waits out short "try again in N s" pauses automatically and falls back to search-only when the budget is exhausted. One full `evaluate.py` run uses most of a day's budget, so on a demo day run it early or set `GROQ_MODEL` to another model.
+Every LLM request walks a strict chain, configured in `.env` (never committed):
+
+```text
+Groq key 1  →  key 2  →  key 3  →  key 4  →  local Ollama model (llama3.2:3b)
+```
+
+```bash
+GROQ_API_KEYS=gsk_first,gsk_second,gsk_third,gsk_fourth   # tried in this order, per request
+OLLAMA_MODEL=llama3.2:3b                                   # end-of-chain fallback (optional)
+```
+
+- A key that is **rate-limited** (per minute or per day) hands over to the next one at once. Every request starts again at key 1, so key 1's budget is used first, then key 2's, and so on.
+- A key that is **rejected** (401/403) is skipped for the rest of the process.
+- When all keys are limited and Groq's "try again in N s" hint is short (≤ 10 s), the keys get one more pass after that wait; only then does the **local model** answer. The UI shows `key N` or `local llama3.2:3b` on every answer.
+- The local model writes a **short plain-text summary** only. It never reranks, so the hybrid order is used in that state. It also never writes the diagram; the backup diagram built from the retrieved code is shown instead. The answer carries a note saying it came from the local model.
+- On this VM's CPU the local model needs about 30 s to read a 1,200-token prompt and then writes 0.6 to 1.5 tokens per second, so the fallback gets a compact prompt (two code chunks) and a 160-token reply (`OLLAMA_MAX_TOKENS`). Measured end to end: **85 s** for one local answer (`reports/ollama-fallback-2026-10-07.log`); allow up to a few minutes on a busy CPU. It is a last resort, not a replacement for Groq.
+- Junk output is rejected (`looks_degenerate` in `generator.py`). The page then shows the search results with a warning instead of nonsense.
+- Nothing is downloaded: the fallback uses the model already installed in Ollama (`ollama list`). In Docker the container reaches the host's Ollama through `host.docker.internal` (set in `docker-compose.yml`).
+
+`qwen/qwen3.8-27b` on the Groq free tier allows about **30 requests, 8K input tokens and 1K output tokens per minute, 200K tokens per day** per key. Short pauses are waited out automatically. One full `evaluate.py` run uses most of one key's daily budget, so on a demo day run it early or set `GROQ_MODEL` to another model.
 
 ## 📝 Notes for the next phase
 

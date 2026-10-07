@@ -26,7 +26,8 @@ def retriever(tmp_path_factory, request):
     patch = pytest.MonkeyPatch()
     patch.setattr(config, "REPO_PATH", request.config.rootpath / "tests" / "fixtures" / "sample_repo")
     patch.setattr(config, "CHROMA_PATH", tmp_path_factory.mktemp("chroma"))
-    patch.delenv("GROQ_API_KEY", raising=False)
+    for name in ("GROQ_API_KEY", "GROQ_API_KEYS", "OLLAMA_MODEL"):
+        patch.delenv(name, raising=False)
     patch.setattr(retrieval, "_retriever", None)
 
     ingestion.main()

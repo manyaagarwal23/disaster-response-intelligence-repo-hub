@@ -62,8 +62,10 @@ The container restarts automatically after a reboot (`restart: unless-stopped`).
 
 - Put a reverse proxy with TLS in front for public use (Caddy: two lines
   of config, automatic HTTPS). The app itself serves plain HTTP on 8000.
-- The Groq key is read from `.env`, which is never committed. Rotate it
-  from the Groq console if it leaks.
+- Groq keys are read from `.env`, which is never committed (`GROQ_API_KEYS=k1,k2,...`
+  tried in order). Rotate a key from the Groq console if it leaks.
+- Optional local fallback: install Ollama on the host and set `OLLAMA_MODEL`
+  (e.g. `llama3.2:3b`); the container reaches it via `host.docker.internal`.
 - Without a key the service still answers with search results, so a
   deployment never goes fully dark when the LLM provider is down.
 - `scripts/smoke_test_compose.sh` verifies the exact one-command start

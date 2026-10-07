@@ -366,7 +366,7 @@ def main():
 
     if llm is None:
 
-        print("GROQ_API_KEY is not set: skipping test generation (nothing to do).")
+        print("No LLM configured (GROQ_API_KEY/GROQ_API_KEYS or OLLAMA_MODEL): skipping test generation.")
 
         return
 

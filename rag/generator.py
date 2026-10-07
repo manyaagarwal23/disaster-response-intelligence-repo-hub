@@ -1,10 +1,17 @@
 import json
 import re
 
+import config
+import llm as llm_module
 from llm import LLMRequestError, get_llm, invoke_with_retry, strip_reasoning
 
 
 MAX_CONTEXT_CHARS = 4000
+
+# The local CPU model sees less code so it can read the prompt quickly
+LOCAL_CONTEXT_CHUNKS = 2
+
+LOCAL_CONTEXT_CHARS = 700
 
 
 class GenerationError(RuntimeError):
@@ -105,6 +112,84 @@ def parse_answer(text):
     }
 
 
+def build_local_prompt(question, results):
+    """
+    Compact prompt for the slow local fallback model: two code chunks,
+    a plain-text answer of a few sentences (small models handle plain
+    text far more reliably than a JSON schema).
+    """
+
+    parts = [
+        "You are a codebase assistant for the Ushahidi PHP repository.",
+        "Answer the question in 3 to 5 short sentences of plain text, using ONLY the code below.",
+        "Name the file and the class or method that answer it. No JSON, no code blocks, no lists.",
+        "",
+        f"QUESTION: {question}",
+        "",
+    ]
+
+    for i, r in enumerate(results[:LOCAL_CONTEXT_CHUNKS], 1):
+
+        code = r["content"][:LOCAL_CONTEXT_CHARS]
+
+        where = "::".join(x for x in (r.get("class"), r.get("method")) if x)
+
+        parts += [f"CODE {i}: {r['source']} {where}".rstrip(), code, ""]
+
+    parts.append("ANSWER:")
+
+    return "\n".join(parts)
+
+
+def looks_degenerate(text):
+    """
+    True when a reply is junk rather than an answer: too short, mostly
+    non-Latin characters, or stuck repeating the same words. Seen once
+    on the dev VM right after the local model loaded.
+    """
+
+    words = re.findall(r"\w+", text or "")
+
+    if len(words) < 4:
+
+        return True
+
+    letters = [c for c in text if c.isalpha()]
+
+    if letters and sum(1 for c in letters if ord(c) > 0x24F) / len(letters) > 0.1:
+
+        return True
+
+    run = longest = 1
+
+    for previous, current in zip(words, words[1:], strict=False):
+
+        run = run + 1 if current.lower() == previous.lower() else 1
+
+        longest = max(longest, run)
+
+    if longest >= 4:
+
+        return True
+
+    return len(words) >= 30 and len({w.lower() for w in words}) / len(words) < 0.35
+
+
+def local_answer(text):
+    """Wrap the local model's plain text as an answer (diagram comes from the backup)."""
+
+    text = strip_reasoning(text).strip()
+
+    if looks_degenerate(text):
+
+        raise GenerationError(
+            "Every Groq key is rate-limited and the local fallback model returned unusable text: "
+            "showing search results only. Try again in a minute."
+        )
+
+    return {"simple": text, "technical": "", "diagram_type": None, "diagram_code": None}
+
+
 def generate_answer(question, results):
     """
     Returns the parsed answer dict, or None when no LLM is
@@ -121,10 +206,18 @@ def generate_answer(question, results):
 
         # Waits out short Groq rate-limit pauses (at most ~40 s in total)
         # instead of failing at once; each request holds one worker thread
-        reply = invoke_with_retry(llm, build_answer_prompt(question, results), attempts=3, max_wait=20)
+        reply = invoke_with_retry(
+            llm, build_answer_prompt(question, results), attempts=3, max_wait=20,
+            local_prompt=build_local_prompt(question, results),
+            local_max_tokens=config.OLLAMA_MAX_TOKENS,
+        )
 
     except LLMRequestError as error:
 
         raise GenerationError(str(error)) from error
+
+    if str(llm_module.last_provider() or "").startswith("ollama"):
+
+        return local_answer(reply)
 
     return parse_answer(reply)

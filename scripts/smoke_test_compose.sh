@@ -9,6 +9,8 @@
 # at the end.
 #
 # Usage:  scripts/smoke_test_compose.sh          (takes ~40 min on a 4-CPU VM)
+#         SMOKE_BUILD=1 scripts/smoke_test_compose.sh   also rebuild the image
+#         (CI already proves the build; a rebuild here needs ~7 GB of disk)
 set -uo pipefail
 
 cd "$(dirname "$0")/.."
@@ -17,6 +19,7 @@ PROJECT=drihsmoke
 export PORT=${SMOKE_PORT:-8001}
 REPORT="reports/compose-smoke-$(date +%Y-%m-%d).log"
 MAX_WAIT_MIN=${SMOKE_MAX_WAIT_MIN:-90}
+BUILD_FLAG=$([ "${SMOKE_BUILD:-0}" = "1" ] && echo "--build" || echo "")
 
 mkdir -p reports
 exec > >(tee "$REPORT") 2>&1
@@ -34,8 +37,8 @@ echo "== commit: $(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 
 compose down -v --remove-orphans >/dev/null 2>&1 || true
 
-echo; echo "== docker compose up --build -d"
-if ! compose up --build -d; then
+echo; echo "== docker compose up $BUILD_FLAG -d"
+if ! compose up $BUILD_FLAG -d; then
     echo "RESULT: FAIL (compose up failed)"; exit 1
 fi
 

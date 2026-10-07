@@ -7,6 +7,7 @@ The scoring helpers at the top are pure functions with no heavy
 dependencies, so they can be unit-tested without ChromaDB or torch.
 """
 
+import math
 import re
 import threading
 import time
@@ -37,7 +38,7 @@ WEIGHTS = {
 
 CANDIDATES = 30
 
-RERANK_TOP_K = 10
+RERANK_TOP_K = config.RERANK_TOP_K
 
 
 # ============================================================
@@ -227,6 +228,132 @@ def apply_llm_order(results, order):
     return [results[position - 1] for position in seen + remaining]
 
 
+
+# ============================================================
+# 2b. Lexical index (BM25): candidates the vector search misses
+# ============================================================
+#
+# Vector search alone misses some questions entirely: "Where is the
+# permission to create a post checked?" never surfaces PostPolicy or
+# PostAuthorizer among the 30 nearest chunks. A small in-memory BM25
+# index over the same chunk texts adds the best keyword matches as
+# extra candidates. Each extra gets its real cosine distance to the
+# question and goes through the same hybrid scoring, so nothing is
+# ever ranked by keywords alone.
+
+LEXICAL_CANDIDATES = 15   # default k for LexicalIndex.search; the live path uses config.LEXICAL_CANDIDATES
+
+BM25_K1 = 1.2
+
+BM25_B = 0.75
+
+
+def stem(word):
+    """
+    Crude but consistent stemmer, applied to documents and questions
+    alike: permissions/permission -> permission, created/creates/
+    creating/create -> creat, checked/checks -> check.
+    """
+
+    for suffix in ("ing", "ed", "es", "s"):
+
+        if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+
+            word = word[: -len(suffix)]
+
+            break
+
+    if word.endswith("e") and len(word) > 4:
+
+        word = word[:-1]
+
+    return word
+
+
+def tokenize(text):
+    """
+    Lowercased, stemmed word tokens of code or prose. Identifiers are
+    split into their words first (PostAuthorizer -> post, authorizer),
+    stopwords and very short tokens are dropped.
+    """
+
+    text = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", text or "")
+
+    text = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", text)
+
+    return [
+        stem(word)
+        for word in re.findall(r"[a-z][a-z0-9]*", text.lower())
+        if len(word) >= 3 and word not in STOPWORDS
+    ]
+
+
+def cosine_distance(a, b):
+
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
+
+    norm_a = math.sqrt(sum(x * x for x in a))
+
+    norm_b = math.sqrt(sum(y * y for y in b))
+
+    return 1.0 - dot / (norm_a * norm_b) if norm_a and norm_b else 1.0
+
+
+class LexicalIndex:
+    """BM25 over chunk texts, built once in memory from the collection."""
+
+    def __init__(self, ids, documents):
+
+        self.ids = list(ids)
+
+        self.lengths = []
+
+        self.postings = {}
+
+        for index, text in enumerate(documents):
+
+            counts = {}
+
+            for token in tokenize(text):
+
+                counts[token] = counts.get(token, 0) + 1
+
+            self.lengths.append(sum(counts.values()))
+
+            for term, frequency in counts.items():
+
+                self.postings.setdefault(term, []).append((index, frequency))
+
+        self.avg_length = (sum(self.lengths) / len(self.lengths)) if self.lengths else 1.0
+
+    def search(self, text, k=LEXICAL_CANDIDATES):
+        """Top-k (chunk id, BM25 score) pairs for a question."""
+
+        scores = {}
+
+        total = len(self.ids)
+
+        for term in set(tokenize(text)):
+
+            posting = self.postings.get(term)
+
+            if not posting:
+
+                continue
+
+            idf = math.log(1 + (total - len(posting) + 0.5) / (len(posting) + 0.5))
+
+            for index, frequency in posting:
+
+                norm = BM25_K1 * (1 - BM25_B + BM25_B * self.lengths[index] / self.avg_length)
+
+                scores[index] = scores.get(index, 0.0) + idf * frequency * (BM25_K1 + 1) / (frequency + norm)
+
+        best = sorted(scores.items(), key=lambda item: (-item[1], item[0]))[:k]
+
+        return [(self.ids[index], score) for index, score in best]
+
+
 # ============================================================
 # 3. Retriever (ChromaDB + embedding model)
 # ============================================================
@@ -266,6 +393,22 @@ class Retriever:
             raise DatabaseNotReadyError(
                 "Vector database is empty. Build it with: python ingestion.py"
             )
+
+        # Optional keyword index (config.LEXICAL_CANDIDATES > 0); the
+        # retriever works without it
+        self.lexical = None
+
+        if config.LEXICAL_CANDIDATES > 0:
+
+            try:
+
+                rows = self.collection.get(include=["documents"])
+
+                self.lexical = LexicalIndex(rows["ids"], rows["documents"])
+
+            except Exception as error:
+
+                print(f"Lexical index unavailable ({error}); using vector search only.")
 
     def query(self, **kwargs):
         """
@@ -318,7 +461,7 @@ class Retriever:
             normalize_embeddings=True,
         ).tolist()
 
-    def semantic_search(self, question, n_results=CANDIDATES):
+    def semantic_search(self, question, n_results=CANDIDATES, embedding=None):
         """
         Pure vector search, ordered by cosine distance.
         A filename mentioned in the question restricts the search
@@ -327,7 +470,9 @@ class Retriever:
 
         question_words = extract_question_words(question)
 
-        embedding = self.embed_question(question)
+        if embedding is None:
+
+            embedding = self.embed_question(question)
 
         filename = detect_filename(question)
 
@@ -352,13 +497,61 @@ class Retriever:
                 n_results=n_results,
             )
 
-        return [
-            build_result(document, metadata, distance, rank, question_words)
-            for rank, (document, metadata, distance) in enumerate(
-                zip(raw["documents"][0], raw["metadatas"][0], raw["distances"][0], strict=True),
-                1,
-            )
-        ]
+        results = []
+
+        for rank, (chunk_id, document, metadata, distance) in enumerate(
+            zip(raw["ids"][0], raw["documents"][0], raw["metadatas"][0], raw["distances"][0], strict=True),
+            1,
+        ):
+
+            result = build_result(document, metadata, distance, rank, question_words)
+
+            result["id"] = chunk_id
+
+            results.append(result)
+
+        return results
+
+    def lexical_candidates(self, question, embedding, exclude_ids, k=LEXICAL_CANDIDATES):
+        """
+        Best BM25 keyword matches that the vector search did not return,
+        as full results with their real cosine distance to the question.
+        """
+
+        index = getattr(self, "lexical", None)
+
+        if index is None:
+
+            return []
+
+        hits = [chunk_id for chunk_id, _ in index.search(question, k + len(exclude_ids)) if chunk_id not in exclude_ids][:k]
+
+        if not hits:
+
+            return []
+
+        rows = self.collection.get(ids=hits, include=["documents", "metadatas", "embeddings"])
+
+        question_words = extract_question_words(question)
+
+        results = []
+
+        for position, (chunk_id, document, metadata, vector) in enumerate(
+            zip(rows["ids"], rows["documents"], rows["metadatas"], rows["embeddings"], strict=True),
+            1,
+        ):
+
+            distance = cosine_distance(embedding, [float(x) for x in vector])
+
+            result = build_result(document, metadata, distance, CANDIDATES + position, question_words)
+
+            result["id"] = chunk_id
+
+            result["lexical"] = True
+
+            results.append(result)
+
+        return results
 
     def search(self, question, use_llm=True):
         """
@@ -371,9 +564,18 @@ class Retriever:
 
         started = time.perf_counter()
 
-        semantic = self.semantic_search(question)
+        embedding = self.embed_question(question)
 
-        hybrid = hybrid_rank(semantic)
+        semantic = self.semantic_search(question, embedding=embedding)
+
+        # Optional keyword matches the vector search missed, scored the same way
+        extras = []
+
+        if config.LEXICAL_CANDIDATES > 0:
+
+            extras = self.lexical_candidates(question, embedding, {r.get("id") for r in semantic}, k=config.LEXICAL_CANDIDATES)
+
+        hybrid = hybrid_rank(semantic + extras)
 
         retrieval_ms = round((time.perf_counter() - started) * 1000)
 

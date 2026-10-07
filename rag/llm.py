@@ -7,7 +7,7 @@ import config
 
 # Characters of code shown per result to the reranker (keeps the
 # request small enough for Groq's payload limit)
-RERANK_PREVIEW_CHARS = 600
+RERANK_PREVIEW_CHARS = config.RERANK_PREVIEW_CHARS
 
 
 class LLMRequestError(RuntimeError):

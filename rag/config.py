@@ -85,3 +85,20 @@ DOC_DIRS = {
     "docs",
     "src",
 }
+
+
+# Extra keyword (BM25) candidates merged into the hybrid ranking. Measured
+# on the 33-question benchmark on 2026-10-07: no gain (the vector search
+# already holds the relevant chunks), so it is off by default. Set e.g.
+# LEXICAL_CANDIDATES=15 to experiment.
+LEXICAL_CANDIDATES = int(os.environ.get("LEXICAL_CANDIDATES", "0"))
+
+
+# How many hybrid candidates the LLM reranker sees, and how much code of
+# each one. Measured 2026-10-07: 25 x 320 chars (~3K tokens per request)
+# lifted three permission questions from "missing" into the top 10 with
+# no change on the control questions; 10 x 600 was the old setting.
+# Groq's free tier allows ~8K input tokens per minute.
+RERANK_TOP_K = int(os.environ.get("RERANK_TOP_K", "25"))
+
+RERANK_PREVIEW_CHARS = int(os.environ.get("RERANK_PREVIEW_CHARS", "320"))

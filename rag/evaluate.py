@@ -141,6 +141,10 @@ def main():
 
     parser.add_argument("--output", help="write per-question results to this JSON file (default: reports/eval/)")
 
+    parser.add_argument("--questions", help="only these 1-based question numbers, e.g. 23,25,28 (default: all)")
+
+    parser.add_argument("--pause", type=float, default=0.0, help="seconds to wait between questions (keeps LLM runs under Groq's per-minute limits)")
+
     args = parser.parse_args()
 
     from retrieval import get_retriever
@@ -153,6 +157,10 @@ def main():
 
     questions = load_questions()
 
+    numbers = [int(n) for n in args.questions.split(",")] if args.questions else list(range(1, len(questions) + 1))
+
+    questions = [(n, questions[n - 1]) for n in numbers]
+
     ranks = {system: [] for system in systems}
 
     rows = []
@@ -161,7 +169,11 @@ def main():
 
     print(f"Evaluating {len(questions)} questions: {', '.join(systems)}\n")
 
-    for i, item in enumerate(questions, 1):
+    for position, (i, item) in enumerate(questions):
+
+        if args.pause and position:
+
+            time.sleep(args.pause)
 
         started = time.perf_counter()
 
@@ -177,7 +189,7 @@ def main():
             "llm": retrieval["final"],
         }
 
-        row = {"question": item["question"], "category": item["category"], "seconds": round(elapsed, 2)}
+        row = {"number": i, "question": item["question"], "category": item["category"], "seconds": round(elapsed, 2)}
 
         for system in systems:
 

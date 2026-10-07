@@ -32,7 +32,8 @@ def test_build_rerank_prompt_truncates():
     r = {"content": "x" * 700, "source": "s", "namespace": "n",
          "class": "c", "method": "m", "type": "t"}
     p = m.build_rerank_prompt("q", [r])
-    assert "x" * 600 in p
+    # preview length is configurable (RERANK_PREVIEW_CHARS); updated 2026-10-07 when the default changed from 600 to 320
+    assert "x" * m.RERANK_PREVIEW_CHARS in p
     assert "x" * 601 not in p
     assert "\n..." in p
 

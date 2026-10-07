@@ -1,18 +1,22 @@
-import sys, time
+import os, shutil, sys, time
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 out = sys.argv[1]; ask = len(sys.argv) < 3 or sys.argv[2] != "--no-ask"
-opts = Options(); opts.add_argument("-headless"); opts.binary_location = "/snap/firefox/current/usr/lib/firefox/firefox"
-drv = webdriver.Firefox(options=opts, service=Service("/snap/bin/geckodriver")); drv.set_window_size(1440, 900)
+# Overridable for other machines: BASE_URL, FIREFOX_BIN, GECKODRIVER
+BASE_URL = os.environ.get("BASE_URL", "http://localhost:8080")
+FIREFOX_BIN = os.environ.get("FIREFOX_BIN", "/snap/firefox/current/usr/lib/firefox/firefox")
+GECKODRIVER = os.environ.get("GECKODRIVER", shutil.which("geckodriver") or "/snap/bin/geckodriver")
+opts = Options(); opts.add_argument("-headless"); opts.binary_location = FIREFOX_BIN
+drv = webdriver.Firefox(options=opts, service=Service(GECKODRIVER)); drv.set_window_size(1440, 900)
 ok = True
 def check(name, cond):
     global ok
     print(("PASS " if cond else "FAIL ") + name); ok = ok and bool(cond)
 try:
-    drv.get("http://localhost:8080")
+    drv.get(BASE_URL)
     drv.execute_script("""window.__logs=[]; for (const k of ['warn','error']) { const o=console[k]; console[k]=(...a)=>{window.__logs.push(k+': '+a.map(String).join(' ')); o(...a);} } window.addEventListener('error', e => window.__logs.push('pageerror: '+e.message));""")
     for _ in range(20):
         if drv.find_element(By.ID, "heroChunks").text not in ("–", ""): break

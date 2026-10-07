@@ -116,6 +116,13 @@ def ollama_complete(prompt, max_tokens=None, model=None, host=None, timeout=None
     return (body.get("message") or {}).get("content", "")
 
 
+# Keys rejected with 401/403, shared by every client in this process
+# (get_llm() builds a new client per request) and guarded by a lock
+_DEAD_KEYS = set()
+
+_dead_keys_lock = threading.Lock()
+
+
 class LLMClient:
     """
     One LLM entry point with a strict fallback chain:
@@ -140,7 +147,9 @@ class LLMClient:
 
         self.clients = [None] * len(self.api_keys)   # built lazily
 
-        self.dead = set()
+        with _dead_keys_lock:
+
+            self.dead = {index for index, key in enumerate(self.api_keys) if key in _DEAD_KEYS}
 
         self.last_provider = None
 
@@ -188,6 +197,10 @@ class LLMClient:
                 if is_bad_key(message):
 
                     self.dead.add(index)
+
+                    with _dead_keys_lock:
+
+                        _DEAD_KEYS.add(self.api_keys[index])
 
                     print(f"Groq key {index + 1} rejected ({message[:80]}); skipping it from now on.")
 

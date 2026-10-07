@@ -46,6 +46,7 @@ Parameters:
 
 Conditions:
   HasKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
+  HasGroqKeys: !Not [!Equals [!Ref GroqApiKeys, ""]]
 
 Resources:
   SecurityGroup:
@@ -67,9 +68,49 @@ Resources:
         - Key: Name
           Value: !Sub "${AWS::StackName}-sg"
 
+  # The Groq key(s) never appear in user data (which any process on the
+  # instance and anyone with ec2:DescribeInstanceAttribute can read): they
+  # are stored in Secrets Manager and fetched at boot with the instance role.
+  GroqSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: HasGroqKeys
+    Properties:
+      Name: !Sub "${AWS::StackName}/groq-api-keys"
+      Description: Groq API keys for the RAG assistant, comma-separated, tried in order
+      SecretString: !Ref GroqApiKeys
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - !If
+          - HasGroqKeys
+          - PolicyName: read-groq-secret
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action: secretsmanager:GetSecretValue
+                  Resource: !Ref GroqSecret
+          - !Ref AWS::NoValue
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InstanceRole
+
   Instance:
     Type: AWS::EC2::Instance
     Properties:
+      IamInstanceProfile: !Ref InstanceProfile
       ImageId: !Ref LatestUbuntuAmi
       InstanceType: !Ref InstanceType
       KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref "AWS::NoValue"]
@@ -85,18 +126,28 @@ Resources:
         - Key: Name
           Value: !Ref AWS::StackName
       UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          set -euo pipefail
-          export GROQ_API_KEYS='${GroqApiKeys}'
-          export PORT='${AppPort}'
-          export REPO_URL='${RepoUrl}'
-          export REPO_REF='${RepoRef}'
-          export APP_DIR=/opt/disaster-response-rag
-          apt-get update -qq
-          apt-get install -y -qq git
-          git clone -q --branch "$REPO_REF" --depth 1 "$REPO_URL" "$APP_DIR"
-          bash "$APP_DIR/deploy/install_on_ubuntu.sh" > /var/log/rag-install.log 2>&1
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            # Everything below is logged to /var/log/rag-install.log, including failures
+            exec > >(tee -a /var/log/rag-install.log) 2>&1
+            set -euo pipefail
+            trap 'echo "[deploy] FAILED at line $LINENO (exit $?)"' ERR
+            export PORT='${AppPort}'
+            export REPO_URL='${RepoUrl}'
+            export REPO_REF='${RepoRef}'
+            export APP_DIR=/opt/disaster-response-rag
+            apt-get update -qq
+            apt-get install -y -qq git awscli
+            if [ -n '${SecretId}' ]; then
+                echo "[deploy] reading the Groq key(s) from Secrets Manager"
+                GROQ_API_KEYS=$(aws secretsmanager get-secret-value --region '${AWS::Region}' \
+                    --secret-id '${SecretId}' --query SecretString --output text)
+                export GROQ_API_KEYS
+            fi
+            git clone -q --branch "$REPO_REF" --depth 1 "$REPO_URL" "$APP_DIR"
+            bash "$APP_DIR/deploy/install_on_ubuntu.sh"
+          - SecretId: !If [HasGroqKeys, !Ref GroqSecret, ""]
 
 Outputs:
   AppUrl:
@@ -110,3 +161,7 @@ Outputs:
   InstallLog:
     Description: Follow the first-start progress after SSH-ing in
     Value: "sudo tail -f /var/log/rag-install.log; docker compose -f /opt/disaster-response-rag/docker-compose.yml logs -f"
+  GroqSecretArn:
+    Condition: HasGroqKeys
+    Description: Where the key(s) live; rotate them here, then restart the app (docker compose up -d)
+    Value: !Ref GroqSecret

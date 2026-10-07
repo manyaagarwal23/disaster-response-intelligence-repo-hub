@@ -145,7 +145,9 @@ def looks_degenerate(text):
     """
     True when a reply is junk rather than an answer: too short, mostly
     non-Latin characters, or stuck repeating the same words. Seen once
-    on the dev VM right after the local model loaded.
+    on the dev VM right after the local model loaded. Answers are
+    expected in English (the prompts and the codebase are English), so
+    a mostly non-Latin reply is treated as junk on purpose.
     """
 
     words = re.findall(r"\w+", text or "")

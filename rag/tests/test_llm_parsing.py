@@ -144,6 +144,12 @@ class _Key:
 RATE_LIMITED = "Error code: 429 - rate_limit_exceeded ... Please try again in 2.5s"
 
 
+@pytest.fixture(autouse=True)
+def fresh_dead_keys(monkeypatch):
+    """Rejected keys are remembered process-wide; keep tests independent."""
+    monkeypatch.setattr(llm, "_DEAD_KEYS", set())
+
+
 def make_client(*keys, ollama=""):
     client = llm.LLMClient(["k%d" % i for i in range(len(keys))], ollama_model=ollama)
     client.clients = list(keys)
@@ -301,3 +307,14 @@ def test_generate_answer_wraps_local_text_and_rejects_junk(monkeypatch):
     monkeypatch.setattr(generator, "get_llm", lambda: LocalOnly(GARBAGE))
     with pytest.raises(generator.GenerationError, match="unusable text"):
         generator.generate_answer("q", [RESULT])
+
+
+def test_rejected_key_is_remembered_by_later_clients():
+    first = make_client(_Key("Error code: 401 - invalid_api_key"), _Key(answer="two"))
+    assert first.complete("p") == "two"
+
+    # a new client for the next request (same key strings) skips the bad key at once
+    later = make_client(_Key(answer="must not be called"), _Key(answer="two again"))
+    assert later.dead == {0}
+    assert later.complete("p") == "two again"
+    assert later.clients[0].calls == 0

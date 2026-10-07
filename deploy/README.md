@@ -41,9 +41,12 @@ data lives in the `rag-data` Docker volume.
 
 ## AWS with one click: CloudFormation
 
-`deploy/aws-cloudformation.yml` creates the instance, the security group
-and the 20 GB disk, and runs the install script as user data (linted with
-`cfn-lint`, no findings). It needs an AWS account with a default VPC.
+`deploy/aws-cloudformation.yml` creates the instance, the security group,
+the 20 GB disk, a Secrets Manager secret for the Groq key(s) and an instance
+role that may read it, then runs the install script as user data (linted
+with `cfn-lint`, no findings). The key never appears in user data. It needs
+an AWS account with a default VPC, and the stack must be allowed to create
+the IAM role (the **CAPABILITY_IAM** checkbox in the console, or the flag below).
 
 1. AWS Console → **CloudFormation → Create stack → Upload a template file**
    → choose `deploy/aws-cloudformation.yml`.
@@ -62,7 +65,8 @@ aws cloudformation deploy --stack-name rag-assistant \
 aws cloudformation describe-stacks --stack-name rag-assistant --query 'Stacks[0].Outputs'
 ```
 
-Delete the stack to remove everything (the instance, the disk, the security group).
+Delete the stack to remove everything (the instance, the disk, the security
+group, the secret and the role). The first-start log is `/var/log/rag-install.log`.
 
 ## Any other VM / bare Ubuntu
 

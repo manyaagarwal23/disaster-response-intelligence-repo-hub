@@ -24,7 +24,7 @@ data lives in the `rag-data` Docker volume.
 1. **Launch an instance:** Ubuntu 24.04 AMI, `t3.large` or larger, 20 GB
    gp3 disk, a key pair you own.
 2. **Security group:** allow inbound TCP 22 (your IP) and TCP 8000
-   (anywhere, or your team's IPs).
+   (anywhere, or your team's IPs). (The CloudFormation template above does steps 1–3 for you.)
 3. **User data (optional, Advanced details → User data):** paste the
    script with your key on the first line, and the instance deploys itself
    on boot:
@@ -38,6 +38,31 @@ data lives in the `rag-data` Docker volume.
    `"database_ready": true` when ingestion has finished. Watch progress
    with `docker compose -f /opt/disaster-response-rag/docker-compose.yml logs -f`.
 5. **Open** `http://<public-ip>:8000`.
+
+## AWS with one click: CloudFormation
+
+`deploy/aws-cloudformation.yml` creates the instance, the security group
+and the 20 GB disk, and runs the install script as user data (linted with
+`cfn-lint`, no findings). It needs an AWS account with a default VPC.
+
+1. AWS Console → **CloudFormation → Create stack → Upload a template file**
+   → choose `deploy/aws-cloudformation.yml`.
+2. Parameters: paste the Groq key(s) into **GroqApiKeys** (comma-separated,
+   tried in order; hidden in the console), pick a **KeyPairName** if you
+   want SSH, and narrow **AllowedCidr** to your IP for a private demo.
+3. Create the stack. The **Outputs** tab shows `AppUrl` and `HealthUrl`;
+   the URL answers when `database_ready` is true (20–40 min).
+
+Or from the AWS CLI:
+
+```bash
+aws cloudformation deploy --stack-name rag-assistant \
+  --template-file deploy/aws-cloudformation.yml \
+  --parameter-overrides GroqApiKeys=gsk_first,gsk_second KeyPairName=my-key AllowedCidr=203.0.113.4/32
+aws cloudformation describe-stacks --stack-name rag-assistant --query 'Stacks[0].Outputs'
+```
+
+Delete the stack to remove everything (the instance, the disk, the security group).
 
 ## Any other VM / bare Ubuntu
 

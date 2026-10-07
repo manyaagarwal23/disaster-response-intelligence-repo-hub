@@ -152,15 +152,15 @@ python evaluate.py --questions 23,25,28 --pause 25   # a subset, paced for Groq'
 
 For each question in `eval/questions.json` the dataset lists the Ushahidi files that contain the answer. The script reports where the first correct file appears in three rankings: **semantic** (vector only), **hybrid**, and **llm** (hybrid + Groq rerank).
 
-**Latest results** (2026-10-07, Ushahidi `78f81b4`, 5,698 chunks, Groq `qwen/qwen3.8-27b`):
+**Latest results** (full run, evening of 2026-10-07, Ushahidi `78f81b4`, 5,698 chunks, Groq `qwen/qwen3.8-27b`, `reports/eval/full-rerank25-run.log`). The morning run with a 10-candidate reranker scored 0.803 / 75.8% / 81.8% / 84.8% on the LLM row:
 
 | Ranking | MRR@10 | Hit@1 | Hit@3 | Hit@5 |
 |---|---|---|---|---|
 | semantic (vector only) | 0.587 | 48.5% | 63.6% | 72.7% |
-| hybrid | 0.614 | 51.5% | 66.7% | 75.8% |
-| **hybrid + LLM rerank** (used by the app) | **0.803** | **75.8%** | **81.8%** | **84.8%** |
+| hybrid | 0.610 | 51.5% | 66.7% | 75.8% |
+| **hybrid + LLM rerank over 25 candidates** (used by the app) | **0.842** | **78.8%** | **84.8%** | **90.9%** |
 
-Weakest area: permission questions, whose answer files sit at hybrid ranks 14–24 (the vocabulary differs: "permission" vs `PostPolicy` / `PostAuthorizer`). Since 2026-10-07 the LLM reranker therefore sees **25 candidates** (320-char previews) instead of 10; on the four affected questions this moved the first relevant file from missing to ranks 1, 3, 6 and 1, with no change on the control questions (`reports/eval/rerank25-subset-run.log`; one measured run, and the reranker is not deterministic across calls). Two other ideas were measured and rejected: a BM25 keyword index (`LEXICAL_CANDIDATES`, kept but off by default) and re-weighted identifier bonuses; neither improved the benchmark without hurting another question. Answers take 2–10 s end to end, far inside the brief's one-minute target.
+Weakest area: permission questions, whose answer files sit at hybrid ranks 14–24 (the vocabulary differs: "permission" vs `PostPolicy` / `PostAuthorizer`). Since 2026-10-07 the LLM reranker therefore sees **25 candidates** (320-char previews) instead of 10. In the full run this lifted four permission questions into the top 10 (three of them to rank 1); only q25 ("Manage Posts permission") still misses, because its answer sits at hybrid rank 17–20 and the reranker is not deterministic across calls. The hybrid row moved from 0.614 to 0.610 between the two runs with identical ranking code: one question flipped between hybrid rank 10 and 11 (approximate nearest-neighbour search at the candidate boundary). Two other ideas were measured and rejected: a BM25 keyword index (`LEXICAL_CANDIDATES`, kept but off by default) and re-weighted identifier bonuses; neither improved the benchmark without hurting another question. Search plus reranking took about 20 s per question in that run (the reasoning model thinks longer over 25 candidates, and the run shared the CPU with an image build); live answers in the app during the day took 2.5–5 s end to end.
 
 Tunables (environment variables, see `rag/config.py`): `RERANK_TOP_K` (25), `RERANK_PREVIEW_CHARS` (320), `LEXICAL_CANDIDATES` (0).
 

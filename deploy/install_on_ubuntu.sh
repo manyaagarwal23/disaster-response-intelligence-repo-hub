@@ -7,6 +7,8 @@
 #
 # Environment (all optional):
 #   GROQ_API_KEY   Groq key; without it the service runs in search-only mode
+#   GROQ_API_KEYS  several keys, comma-separated, tried in order (overrides GROQ_API_KEY)
+#   OLLAMA_MODEL   local fallback model served by Ollama on this host (optional)
 #   REPO_URL       git repository to deploy (default: the project repo)
 #   REPO_REF       branch or tag to deploy (default: main)
 #   APP_DIR        install directory (default: /opt/disaster-response-rag)
@@ -51,9 +53,17 @@ else
 fi
 
 # ---- Secrets ------------------------------------------------------------
-if [ -n "${GROQ_API_KEY:-}" ]; then
+if [ -n "${GROQ_API_KEYS:-}" ] || [ -n "${GROQ_API_KEY:-}" ]; then
     umask 077
-    printf 'GROQ_API_KEY=%s\nPORT=%s\n' "$GROQ_API_KEY" "$PORT" > "$APP_DIR/.env"
+    KEYS=${GROQ_API_KEYS:-$GROQ_API_KEY}
+    {
+        printf 'GROQ_API_KEYS=%s\n' "$KEYS"        # tried in order per request
+        printf 'GROQ_API_KEY=%s\n' "${KEYS%%,*}"   # first key, for tools that read one
+        if [ -n "${OLLAMA_MODEL:-}" ]; then
+            printf 'OLLAMA_MODEL=%s\n' "$OLLAMA_MODEL"   # local fallback (Ollama on this host)
+        fi
+        printf 'PORT=%s\n' "$PORT"
+    } > "$APP_DIR/.env"
     log "wrote $APP_DIR/.env"
 elif [ ! -f "$APP_DIR/.env" ]; then
     printf 'PORT=%s\n' "$PORT" > "$APP_DIR/.env"

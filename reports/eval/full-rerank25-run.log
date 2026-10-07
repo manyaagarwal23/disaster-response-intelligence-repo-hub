@@ -1,0 +1,49 @@
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 47228.34it/s]
+Evaluating 33 questions: semantic, hybrid, llm
+
+ 1. semantic= 1  hybrid= 1  llm= 1   2.3s  Where is the EntityExists contract defined?
+ 2. semantic= 1  hybrid= 1  llm= 1   0.7s  What does EntityExists::exists() define?
+ 3. semantic= 1  hybrid= 1  llm= 1   0.7s  Where is verifyEntityLoaded declared abstract and where is it implemented?
+ 4. semantic= 6  hybrid= 1  llm= 1  18.0s  What exception is thrown when an entity cannot be found?
+ 5. semantic= 4  hybrid= 1  llm= 1  21.3s  How does the system verify that an entity was actually loaded?
+ 6. semantic= 1  hybrid= 2  llm= 2  18.3s  Which repository method is used to load an entity before verification?
+ 7. semantic= 3  hybrid= 1  llm= 1  19.5s  Where is the actual implementation of verifyEntityLoaded?
+ 8. semantic= 3  hybrid= 8  llm= 5  19.4s  Which use cases call verifyEntityLoaded?
+ 9. semantic= 1  hybrid= 1  llm= 1  20.4s  Show me how the EntityExists interface is structured.
+10. semantic= 1  hybrid= 5  llm= 1  16.0s  What happens if the exists() method returns false?
+11. semantic= 1  hybrid= 1  llm= 1  20.2s  What happens after an entity is loaded in UpdateUsecase?
+12. semantic= 3  hybrid= 1  llm= 1  19.3s  Where is verifyEntityLoaded implemented and which parts of the system call it?
+13. semantic= 1  hybrid= 1  llm= 1  19.0s  Show me the code for the UpdateUsecase class.
+14. semantic= 1  hybrid= 1  llm= 1  22.5s  What dependencies are injected into the UpdateUsecase?
+15. semantic= 1  hybrid= 1  llm= 1  23.2s  How does the CreateSetPost usecase work?
+16. semantic= 6  hybrid= 6  llm= 1  24.0s  Show me how a post is updated in the system.
+17. semantic= 1  hybrid= 1  llm= 1  23.5s  What methods does the PostRepository provide?
+18. semantic= 4  hybrid= 5  llm= 1  23.4s  How does the system handle fetching entities from the database?
+19. semantic= 1  hybrid= 1  llm= 1  21.0s  Which classes implement the EntityExists contract?
+20. semantic= 6  hybrid= 1  llm= 1  23.1s  Explain what the ReadUsecase does.
+21. semantic= 4  hybrid= 5  llm= 2  24.1s  How does the system prevent an unauthorized user from creating a post?
+22. semantic= 1  hybrid= 2  llm= 1  23.2s  Where is the user's role checked when creating a post?
+23. semantic= -  hybrid= -  llm= 1  25.1s  Where is the permission to create a post checked?
+24. semantic= 1  hybrid= 9  llm= 1  19.9s  How does the system determine which roles can create posts?
+25. semantic= -  hybrid= -  llm= -  22.0s  How does the system check whether a user has Manage Posts permission?
+26. semantic= 8  hybrid= 7  llm= 4  23.0s  Show me the code that validates user permissions.
+27. semantic= 1  hybrid= 3  llm= 1  23.1s  How does the API prevent unauthorized access to usecases?
+28. semantic= -  hybrid= -  llm= 6  22.0s  What happens when a user without permissions tries to update a post?
+29. semantic= 2  hybrid= 3  llm= 6  15.2s  Explain how roles are assigned to users in the system.
+30. semantic= -  hybrid= -  llm= 1  23.2s  How does the system validate input data before creating a post?
+31. semantic= 1  hybrid= 1  llm= 1  21.1s  Where is an incoming SMS report parsed?
+32. semantic= 2  hybrid= 1  llm= 1  22.9s  Where is the map pin / post location logic?
+33. semantic= -  hybrid= 3  llm= 1  23.0s  Where are the V5 API routes for posts defined?
+
+======================================================================
+RESULTS (top 10, 33 questions, Ushahidi 78f81b4b)
+======================================================================
+system        MRR@10     Hit@1     Hit@3     Hit@5
+semantic       0.587     48.5%     63.6%     72.7%
+hybrid         0.610     51.5%     66.7%     75.8%
+llm            0.842     78.8%     84.8%     90.9%
+
+Latency: mean 19.5 s, max 25.1 s per question
+
+Results written to /app/reports/eval/2026-10-07-full-rerank25.json
+exit 0

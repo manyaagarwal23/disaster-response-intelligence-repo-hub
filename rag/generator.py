@@ -119,8 +119,9 @@ def generate_answer(question, results):
 
     try:
 
-        # Waits out short Groq rate-limit pauses instead of failing at once
-        reply = invoke_with_retry(llm, build_answer_prompt(question, results), attempts=3, max_wait=30)
+        # Waits out short Groq rate-limit pauses (at most ~40 s in total)
+        # instead of failing at once; each request holds one worker thread
+        reply = invoke_with_retry(llm, build_answer_prompt(question, results), attempts=3, max_wait=20)
 
     except LLMRequestError as error:
 

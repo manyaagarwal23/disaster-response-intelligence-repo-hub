@@ -27,6 +27,7 @@ import datetime
 import json
 import os
 import time
+from pathlib import Path
 
 import config
 
@@ -231,9 +232,9 @@ def main():
 
     stamp = datetime.datetime.now().strftime("%Y-%m-%d-%H%M")
 
-    output = args.output or REPORTS_DIR / f"{stamp}-{'-'.join(systems)}.json"
+    output = Path(args.output) if args.output else REPORTS_DIR / f"{stamp}-{'-'.join(systems)}.json"
 
-    os.makedirs(os.path.dirname(output), exist_ok=True)
+    output.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output, "w", encoding="utf-8") as file:
 

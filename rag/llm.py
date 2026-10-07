@@ -114,7 +114,8 @@ def invoke_with_retry(llm, prompt, attempts=4, max_wait=65):
 
                 break
 
-            wait = min(max_wait, (retry_after_seconds(last_error) or max_wait) + 0.5)
+            # Groq usually says how long to wait; otherwise back off briefly
+            wait = min(max_wait, (retry_after_seconds(last_error) or 2.0) + 0.5)
 
             print(f"LLM rate limit hit, waiting {wait:.1f}s (attempt {attempt}/{attempts})...")
 
@@ -228,8 +229,8 @@ def rerank(question, results):
 
     try:
 
-        # Short waits only: a reranking must not hold up the answer
-        reply = invoke_with_retry(llm, build_rerank_prompt(question, results), attempts=3, max_wait=15)
+        # Short waits only (at most ~10 s): reranking must not hold up the answer
+        reply = invoke_with_retry(llm, build_rerank_prompt(question, results), attempts=2, max_wait=10)
 
     except LLMRequestError as error:
 

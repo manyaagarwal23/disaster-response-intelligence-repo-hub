@@ -49,12 +49,22 @@ PURE_MODULES = [
     "rag_api.py",
 ]
 
-# Generated tests must never touch the network, other files or heavy libs
-FORBIDDEN = [
-    "subprocess", "socket", "urllib", "requests", "httpx", "shutil",
-    "os.remove", "os.unlink", "rmtree", "chromadb", "sentence_transformers",
-    "torch", "langchain", "get_retriever(", "Retriever(", "ingestion",
-]
+# Generated tests must never touch the network, other files or heavy libs:
+# only these imports are allowed (checked on the parsed AST, so aliases
+# and `from x import y` cannot slip through)
+ALLOWED_IMPORTS = {
+    "pytest", "re", "json", "math", "datetime", "pathlib", "typing", "collections",
+    "itertools", "functools", "string", "textwrap", "copy", "dataclasses", "enum",
+    "unittest", "unittest.mock",
+    # project modules that are safe to import
+    "config", "php_extractor", "chunking", "retrieval", "llm", "generator", "evaluate", "rag_api",
+}
+
+# Calls that would let a test escape the sandbox even without an import
+FORBIDDEN_CALLS = {"__import__", "exec", "eval", "compile", "open", "getattr", "globals", "vars"}
+
+# Names that must not appear even as attributes (e.g. os.system via a helper)
+FORBIDDEN_NAMES = {"get_retriever", "Retriever", "ingestion", "importlib", "subprocess", "socket"}
 
 # Keeps one prompt under Groq's free-tier 7,000 tokens-per-minute budget
 MAX_SOURCE_CHARS = 14000
@@ -171,25 +181,75 @@ def drop_tests(source, names):
 
 
 def safety_problems(source):
-
-    found = [word for word in FORBIDDEN if word in source]
+    """
+    Reasons a generated test file must be rejected: syntax errors,
+    imports outside the allow-list, or calls that could escape the
+    sandbox. Works on the AST, so `import subprocess as sp` or
+    `__import__("os")` are caught just like plain imports.
+    """
 
     try:
 
-        ast.parse(source)
+        tree = ast.parse(source)
 
     except SyntaxError as error:
 
-        found.append(f"syntax error: {error}")
+        return [f"syntax error: {error}"]
 
-    return found
+    found = []
+
+    for node in ast.walk(tree):
+
+        if isinstance(node, ast.Import):
+
+            for alias in node.names:
+
+                if alias.name not in ALLOWED_IMPORTS and alias.name.split(".")[0] not in ALLOWED_IMPORTS:
+
+                    found.append(f"import {alias.name}")
+
+        elif isinstance(node, ast.ImportFrom):
+
+            module = node.module or ""
+
+            if module not in ALLOWED_IMPORTS and module.split(".")[0] not in ALLOWED_IMPORTS:
+
+                found.append(f"from {module} import ...")
+
+        elif isinstance(node, ast.Call):
+
+            callee = node.func
+
+            name = callee.id if isinstance(callee, ast.Name) else getattr(callee, "attr", "")
+
+            if name in FORBIDDEN_CALLS or name in FORBIDDEN_NAMES:
+
+                found.append(f"call to {name}()")
+
+        elif isinstance(node, (ast.Name, ast.Attribute)):
+
+            name = node.id if isinstance(node, ast.Name) else node.attr
+
+            if name in FORBIDDEN_NAMES:
+
+                found.append(f"use of {name}")
+
+    return sorted(set(found))
 
 
 def generate_for(llm, module, log):
 
     name = module[:-3]
 
-    source = (RAG_DIR / module).read_text(encoding="utf-8")[:MAX_SOURCE_CHARS]
+    source = (RAG_DIR / module).read_text(encoding="utf-8")
+
+    if len(source) > MAX_SOURCE_CHARS:
+
+        # The LLM only sees the first part; tests on unseen functions
+        # simply fail at run time and are dropped like any other
+        log(f"- `{module}`: {len(source)} chars, only the first {MAX_SOURCE_CHARS} shown to the LLM")
+
+        source = source[:MAX_SOURCE_CHARS]
 
     tests = ask(llm, PROMPT.format(module=name, source=source))
 

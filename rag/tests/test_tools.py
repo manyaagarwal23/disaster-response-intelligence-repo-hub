@@ -55,7 +55,7 @@ def test_render_review_mentions_every_finding():
 
 
 SOURCE = '''import pytest
-import m
+import chunking as m
 
 
 def test_a():
@@ -86,7 +86,15 @@ def test_failing_tests_parses_pytest_output():
 
 
 def test_safety_problems_blocks_dangerous_or_broken_tests():
-    assert generate_tests.safety_problems("import subprocess\n") == ["subprocess"]
-    assert "chromadb" in generate_tests.safety_problems("import chromadb\nimport torch\n")
-    assert any("syntax error" in p for p in generate_tests.safety_problems("def test_(:\n"))
-    assert generate_tests.safety_problems(SOURCE) == []
+    problems = generate_tests.safety_problems
+
+    assert problems("import subprocess\n") == ["import subprocess"]
+    assert problems("import subprocess as sp\n") == ["import subprocess"]
+    assert problems("from os import system\n") == ["from os import ..."]
+    assert problems("import chromadb\nimport torch\n") == ["import chromadb", "import torch"]
+    assert problems("x = __import__('os')\n") == ["call to __import__()"]
+    assert problems("import retrieval as m\nm.get_retriever()\n") == ["call to get_retriever()", "use of get_retriever"]
+    assert any("syntax error" in p for p in problems("def test_(:\n"))
+    # The project modules, pytest and the standard helpers are fine
+    assert problems("import pytest\nimport re\nimport retrieval as m\nfrom pathlib import Path\n") == []
+    assert problems(SOURCE) == []

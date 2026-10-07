@@ -3,7 +3,22 @@ import os
 import pytest
 
 import config
-from evaluate import first_relevant_rank, load_questions, summarize
+from evaluate import first_relevant_rank, load_questions, render_markdown, summarize
+
+
+def test_render_markdown_lists_every_system_and_question():
+    summaries = {"semantic": summarize([1, None]), "hybrid": summarize([1, 2])}
+    rows = [
+        {"question": "q1", "semantic": 1, "hybrid": 1},
+        {"question": "q2", "semantic": None, "hybrid": 2},
+    ]
+
+    text = render_markdown(summaries, {"mean_s": 1.5, "max_s": 2.0}, rows, ["semantic", "hybrid"], "now")
+
+    assert "| semantic | 0.500 |" in text
+    assert "| hybrid | 0.750 |" in text
+    assert "| 2 | - | 2 | q2 |" in text
+    assert "mean 1.5 s" in text
 
 
 def test_first_relevant_rank():

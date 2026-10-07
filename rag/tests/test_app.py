@@ -101,3 +101,33 @@ def test_ask_reports_unexpected_errors_as_500(client, fake_pipeline):
 
 def test_ask_rejects_empty_question(client):
     assert client.post("/api/ask", json={"question": ""}).status_code == 422
+
+
+def test_search_returns_instant_results(client, fake_pipeline):
+    calls = []
+
+    def search_code(query, k):
+        calls.append((query, k))
+        return {"query": query, "results": [{"file": "a.php"}], "timings": {"retrieval_ms": 40}}
+
+    fake_pipeline.search_code = search_code
+
+    response = client.get("/api/search", params={"q": "incoming sms", "k": 5})
+
+    assert response.status_code == 200
+    assert response.json()["results"][0]["file"] == "a.php"
+    assert calls == [("incoming sms", 5)]
+
+
+def test_search_validates_parameters(client):
+    assert client.get("/api/search", params={"q": ""}).status_code == 422
+    assert client.get("/api/search", params={"q": "x", "k": 999}).status_code == 422
+
+
+def test_stats_endpoint(client, fake_pipeline):
+    fake_pipeline.get_stats = lambda: {"chunks": 5698, "llm_configured": True}
+
+    response = client.get("/api/stats")
+
+    assert response.status_code == 200
+    assert response.json()["chunks"] == 5698

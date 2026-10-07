@@ -8,6 +8,8 @@ dependencies, so they can be unit-tested without ChromaDB or torch.
 """
 
 import re
+import threading
+import time
 
 import config
 
@@ -286,6 +288,29 @@ class Retriever:
 
             return self.collection.query(**kwargs)
 
+    def stats(self):
+        """Counts of what is indexed, computed once and cached."""
+
+        if getattr(self, "_stats", None) is None:
+
+            metadata = self.collection.get(include=["metadatas"])["metadatas"]
+
+            by_type = {}
+
+            for item in metadata:
+
+                by_type[item.get("type", "?")] = by_type.get(item.get("type", "?"), 0) + 1
+
+            self._stats = {
+                "chunks": len(metadata),
+                "by_type": by_type,
+                "files": len({item.get("source") for item in metadata}),
+                "embedding_model": config.EMBEDDING_MODEL,
+                "ushahidi_commit": (self.collection.metadata or {}).get("ushahidi_commit", config.USHAHIDI_COMMIT),
+            }
+
+        return self._stats
+
     def embed_question(self, question):
 
         return self.model.encode(
@@ -344,13 +369,19 @@ class Retriever:
           final    - hybrid top-k reordered by the LLM (if available)
         """
 
+        started = time.perf_counter()
+
         semantic = self.semantic_search(question)
 
         hybrid = hybrid_rank(semantic)
 
+        retrieval_ms = round((time.perf_counter() - started) * 1000)
+
         final = hybrid
 
         llm_used = False
+
+        rerank_ms = 0
 
         if use_llm:
 
@@ -358,7 +389,11 @@ class Retriever:
 
             top = hybrid[:RERANK_TOP_K]
 
+            rerank_started = time.perf_counter()
+
             order = rerank(question, top)
+
+            rerank_ms = round((time.perf_counter() - rerank_started) * 1000)
 
             if order is not None:
 
@@ -371,19 +406,30 @@ class Retriever:
             "hybrid": hybrid,
             "final": final,
             "llm_used": llm_used,
+            "timings": {"retrieval_ms": retrieval_ms, "rerank_ms": rerank_ms},
         }
 
 
 _retriever = None
 
+_retriever_lock = threading.Lock()
+
 
 def get_retriever():
-    """Load the database and model once and reuse them."""
+    """
+    Load the database and model once and reuse them. The lock makes
+    concurrent first requests (and the start-up warm-up) wait for one
+    load instead of each building their own retriever.
+    """
 
     global _retriever
 
     if _retriever is None:
 
-        _retriever = Retriever()
+        with _retriever_lock:
+
+            if _retriever is None:
+
+                _retriever = Retriever()
 
     return _retriever

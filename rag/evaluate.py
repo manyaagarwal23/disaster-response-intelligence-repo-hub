@@ -11,16 +11,22 @@ We then check where the first correct file appears in each ranking:
 Metrics (computed over the top K = 10 results):
   MRR@10 - mean of 1/rank of the first correct result (0 if not found)
   Hit@k  - % of questions with a correct result in the top k
+  latency - wall-clock seconds per question (the brief asks for < 1 min)
+
+Every run is saved under reports/eval/ (JSON with per-question detail
+plus a Markdown summary), so results are never lost.
 
 Usage:
     python evaluate.py               # semantic + hybrid (+ llm if key set)
     python evaluate.py --no-llm      # skip the LLM even if a key is set
-    python evaluate.py --output eval/results.json
+    python evaluate.py --output path/to/results.json
 """
 
 import argparse
+import datetime
 import json
 import os
+import time
 
 import config
 
@@ -30,6 +36,8 @@ K = 10
 HIT_LEVELS = (1, 3, 5)
 
 QUESTIONS_FILE = config.RAG_DIR / "eval" / "questions.json"
+
+REPORTS_DIR = config.PROJECT_DIR / "reports" / "eval"
 
 
 # ============================================================
@@ -78,6 +86,48 @@ def load_questions(path=QUESTIONS_FILE):
         return json.load(file)["questions"]
 
 
+def render_markdown(summaries, latency, rows, systems, when):
+    """Human-readable summary of one run."""
+
+    lines = [
+        f"# Retrieval evaluation — {when}",
+        "",
+        f"{len(rows)} questions, top {K}, Ushahidi `{config.USHAHIDI_COMMIT[:8]}`, "
+        f"LLM `{config.GROQ_MODEL}`" + ("" if "llm" in systems else " (not used)"),
+        "",
+        "| system | MRR@10 | " + " | ".join(f"Hit@{n}" for n in HIT_LEVELS) + " |",
+        "|---|---|" + "---|" * len(HIT_LEVELS),
+    ]
+
+    for system in systems:
+
+        s = summaries[system]
+
+        lines.append(
+            f"| {system} | {s['mrr']:.3f} | "
+            + " | ".join(f"{s[f'hit@{n}']:.1f}%" for n in HIT_LEVELS) + " |"
+        )
+
+    lines += [
+        "",
+        f"Latency per question: mean {latency['mean_s']:.1f} s, max {latency['max_s']:.1f} s "
+        f"(target from the brief: under 60 s).",
+        "",
+        "## Per question (rank of first correct file; `-` = not in top 10)",
+        "",
+        "| # | " + " | ".join(systems) + " | question |",
+        "|---|" + "---|" * len(systems) + "---|",
+    ]
+
+    for i, row in enumerate(rows, 1):
+
+        cells = " | ".join(str(row[s] or "-") for s in systems)
+
+        lines.append(f"| {i} | {cells} | {row['question']} |")
+
+    return "\n".join(lines) + "\n"
+
+
 # ============================================================
 # Evaluation run
 # ============================================================
@@ -88,7 +138,7 @@ def main():
 
     parser.add_argument("--no-llm", action="store_true", help="do not evaluate LLM reranking")
 
-    parser.add_argument("--output", help="write per-question results to this JSON file")
+    parser.add_argument("--output", help="write per-question results to this JSON file (default: reports/eval/)")
 
     args = parser.parse_args()
 
@@ -106,11 +156,19 @@ def main():
 
     rows = []
 
+    seconds = []
+
     print(f"Evaluating {len(questions)} questions: {', '.join(systems)}\n")
 
     for i, item in enumerate(questions, 1):
 
+        started = time.perf_counter()
+
         retrieval = retriever.search(item["question"], use_llm=use_llm)
+
+        elapsed = time.perf_counter() - started
+
+        seconds.append(elapsed)
 
         orderings = {
             "semantic": retrieval["semantic"],
@@ -118,7 +176,7 @@ def main():
             "llm": retrieval["final"],
         }
 
-        row = {"question": item["question"], "category": item["category"]}
+        row = {"question": item["question"], "category": item["category"], "seconds": round(elapsed, 2)}
 
         for system in systems:
 
@@ -136,7 +194,7 @@ def main():
 
         cells = "  ".join(f"{s}={row[s] or '-':>2}" for s in systems)
 
-        print(f"{i:>2}. {cells}  {item['question']}")
+        print(f"{i:>2}. {cells}  {elapsed:4.1f}s  {item['question']}")
 
         if use_llm and not retrieval["llm_used"]:
 
@@ -148,6 +206,8 @@ def main():
 
     summaries = {system: summarize(ranks[system]) for system in systems}
 
+    latency = {"mean_s": sum(seconds) / len(seconds), "max_s": max(seconds)}
+
     print("\n" + "=" * 70)
     print(f"RESULTS (top {K}, {len(questions)} questions, Ushahidi {config.USHAHIDI_COMMIT[:8]})")
     print("=" * 70)
@@ -157,17 +217,46 @@ def main():
 
         print(f"{system:<10}{s['mrr']:>10.3f}" + "".join(f"{s[f'hit@{n}']:>9.1f}%" for n in HIT_LEVELS))
 
+    print(f"\nLatency: mean {latency['mean_s']:.1f} s, max {latency['max_s']:.1f} s per question")
+
     if not use_llm:
 
-        print("\nLLM reranking not evaluated (no GROQ_API_KEY or --no-llm).")
+        print("LLM reranking not evaluated (no GROQ_API_KEY or --no-llm).")
 
-    if args.output:
+    # --------------------------------------------------------
+    # Persist (never only on screen)
+    # --------------------------------------------------------
 
-        with open(args.output, "w", encoding="utf-8") as file:
+    when = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
-            json.dump({"summary": summaries, "questions": rows}, file, indent=2)
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d-%H%M")
 
-        print("\nPer-question results written to", args.output)
+    output = args.output or REPORTS_DIR / f"{stamp}-{'-'.join(systems)}.json"
+
+    os.makedirs(os.path.dirname(output), exist_ok=True)
+
+    with open(output, "w", encoding="utf-8") as file:
+
+        json.dump({
+            "when": when,
+            "ushahidi_commit": config.USHAHIDI_COMMIT,
+            "llm_model": config.GROQ_MODEL if use_llm else None,
+            "summary": summaries,
+            "latency": latency,
+            "questions": rows,
+        }, file, indent=2)
+
+    print("\nResults written to", output)
+
+    if not args.output:
+
+        latest = REPORTS_DIR / "latest.md"
+
+        with open(latest, "w", encoding="utf-8") as file:
+
+            file.write(render_markdown(summaries, latency, rows, systems, when))
+
+        print("Summary written to", latest)
 
 
 if __name__ == "__main__":

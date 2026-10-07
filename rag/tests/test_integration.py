@@ -74,6 +74,25 @@ def test_questions_retrieve_the_right_file(retriever, question, expected_source)
     assert result["llm_used"] is False
 
 
+def test_instant_code_search_and_stats(retriever):
+    from rag_api import get_stats, search_code
+
+    result = search_code("twilio sms webhook", k=3)
+
+    assert len(result["results"]) == 3
+    # Both the controller and the doc section describing the webhook are
+    # correct hits; the controller must be near the top either way.
+    files = [r["file"] for r in result["results"]]
+    assert "src/Ushahidi/DataSource/Twilio/TwilioController.php" in files
+    assert result["timings"]["rerank_ms"] == 0          # no LLM involved
+    assert result["timings"]["retrieval_ms"] < 5000
+
+    stats = get_stats()
+    assert stats["chunks"] == retriever.collection.count()
+    assert {"method", "file", "doc"} <= set(stats["by_type"])
+    assert stats["llm_configured"] is False
+
+
 def test_rag_answer_without_llm_returns_real_sources(retriever):
     from rag_api import get_rag_answer
 

@@ -1,3 +1,7 @@
+import os
+import time
+
+import config
 from generator import GenerationError, generate_answer
 from retrieval import get_retriever
 
@@ -7,6 +11,11 @@ ANSWER_CONTEXT_K = 3
 
 # Number of retrieved chunks shown to the user as evidence
 EVIDENCE_K = 5
+
+# Default / maximum results for instant code search
+SEARCH_K = 10
+
+SEARCH_MAX_K = 30
 
 
 def to_source(result):
@@ -63,17 +72,21 @@ def get_rag_answer(question):
       sources  - the chunks that were ACTUALLY retrieved and given to
                  the LLM (never taken from the LLM's own output)
       llm_used - whether the LLM reranked/answered
-
       warning  - why the LLM was not used, if it was not
+      timings  - milliseconds spent in retrieval, reranking, generation
 
     Raises retrieval.DatabaseNotReadyError if the vector DB is missing.
     """
+
+    started = time.perf_counter()
 
     retrieval = get_retriever().search(question)
 
     results = retrieval["final"]
 
     warning = None
+
+    generation_started = time.perf_counter()
 
     try:
 
@@ -86,6 +99,8 @@ def get_rag_answer(question):
         answer = None
 
         warning = str(error)
+
+    generation_ms = round((time.perf_counter() - generation_started) * 1000)
 
     if answer is not None:
 
@@ -107,4 +122,38 @@ def get_rag_answer(question):
         "sources": [to_source(r) for r in results[:EVIDENCE_K]],
         "llm_used": answer is not None,
         "warning": warning,
+        "timings": {
+            **retrieval["timings"],
+            "generation_ms": generation_ms,
+            "total_ms": round((time.perf_counter() - started) * 1000),
+        },
     }
+
+
+def search_code(query, k=SEARCH_K):
+    """
+    Instant semantic + hybrid code search without the LLM (well under a
+    second). This is the "where is X" lookup from the project brief.
+    """
+
+    k = max(1, min(int(k), SEARCH_MAX_K))
+
+    retrieval = get_retriever().search(query, use_llm=False)
+
+    return {
+        "query": query,
+        "results": [to_source(r) for r in retrieval["hybrid"][:k]],
+        "timings": retrieval["timings"],
+    }
+
+
+def get_stats():
+    """What is indexed and how the service is configured."""
+
+    stats = dict(get_retriever().stats())
+
+    stats["llm_model"] = config.GROQ_MODEL
+
+    stats["llm_configured"] = bool(os.environ.get("GROQ_API_KEY"))
+
+    return stats

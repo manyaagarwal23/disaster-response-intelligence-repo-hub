@@ -1,0 +1,14 @@
+32. semantic= 2  hybrid= 1  llm= 1  22.9s  Where is the map pin / post location logic?
+33. semantic= -  hybrid= 3  llm= 1  23.0s  Where are the V5 API routes for posts defined?
+======================================================================
+RESULTS (top 10, 33 questions, Ushahidi 78f81b4b)
+======================================================================
+system        MRR@10     Hit@1     Hit@3     Hit@5
+semantic       0.587     48.5%     63.6%     72.7%
+hybrid         0.610     51.5%     66.7%     75.8%
+llm            0.842     78.8%     84.8%     90.9%
+Latency: mean 19.5 s, max 25.1 s per question
+Results written to /app/reports/eval/2026-10-07-full-rerank25.json
+exit 0
+
+[exited with code 0]

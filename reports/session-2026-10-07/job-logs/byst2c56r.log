@@ -1,0 +1,17 @@
+--- summary:
+system        MRR@10     Hit@1     Hit@3     Hit@5
+semantic       0.587     48.5%     63.6%     72.7%
+hybrid         0.610     51.5%     66.7%     75.8%
+llm            0.842     78.8%     84.8%     90.9%
+Latency: mean 19.5 s, max 25.1 s per question
+Results written to /app/reports/eval/2026-10-07-full-rerank25.json
+exit 0
+--- rerank unavailable count: 0
+--- still outside the top 10 after reranking:
+25. semantic= -  hybrid= -  llm= -  22.0s  How does the system check whether a user has Manage Posts permissio
+--- per-question llm ranks:
+q1=1 q2=1 q3=1 q4=1 q5=1 q6=2 q7=1 q8=5 q9=1 q10=1 q11=1 q12=1 q13=1 q14=1 q15=1 q16=1 q17=1 q18=1 q19=1 q20=1 q21=2 q22=1 q23=1 q24=1 q25=- q26=4 q27=1 q28=6 q29=6 q30=1 q31=1 q32=1 q33=1 
+2026-10-07-full-rerank25.json
+full-rerank25-run.log
+
+[exited with code 0]

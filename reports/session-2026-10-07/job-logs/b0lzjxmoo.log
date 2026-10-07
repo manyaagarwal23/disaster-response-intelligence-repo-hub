@@ -1,0 +1,6 @@
+25. semantic= -  hybrid= -   0.1s  How does the system check whether a user has Manage Posts permission?
+semantic       0.587     48.5%     63.6%     72.7%
+hybrid         0.610     51.5%     66.7%     75.8%
+exit 0
+
+[exited with code 0]

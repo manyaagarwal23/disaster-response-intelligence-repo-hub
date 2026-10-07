@@ -124,3 +124,13 @@ All 20 checks passed: stats loaded, 6 question cards, light/dark toggle, `/`
 shortcut, Code Search 10 results in under 0.5 s with syntax highlighting and
 GitHub links, pipeline stepper, answer with timings (2.5 s), diagram rendered,
 modal open/close, New chat, history count, 33 dataset questions, no page errors.
+
+## Later jobs of the same day (phases 4-5)
+
+| Log | Content |
+|---|---|
+| `bvbngh813.log` | Full 33-question evaluation with the 25-candidate reranker (full run: `reports/eval/full-rerank25-run.log`) |
+| `b668dllkw.log` | Application image rebuild (full build log: `reports/docker-build-2026-10-07.log`) |
+| `brxhww2kt.log` | AI review of the key-chain and deployment changes (report: `reports/ai-review-2026-10-07-keychain.md`) |
+| `b0lzjxmoo.log` | No-LLM evaluation on a quiet CPU, used to confirm the q25 tie (full run: `reports/eval/nollm-quietcpu-run.log`) |
+| `byst2c56r.log` | Wait loop for the full evaluation (no content of its own) |

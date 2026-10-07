@@ -1,0 +1,13 @@
+# Lightweight set for the fast CI job and local unit tests.
+# Deliberately excludes torch / chromadb / sentence-transformers so the
+# safety-net checks finish in seconds; the full stack is tested in the
+# Docker job (pytest -m integration).
+
+tree-sitter==0.26.0
+tree-sitter-php==0.24.1
+fastapi==0.142.2
+uvicorn==0.54.0
+jinja2==3.1.6
+httpx==0.28.1
+pytest==9.1.1
+ruff==0.16.10

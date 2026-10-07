@@ -5,41 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Disaster Response Intelligence Repo Hub</title>
     <meta name="description" content="AI onboarding assistant for the Ushahidi crisis-mapping codebase: ask in plain English, get the exact files, an explanation and a diagram.">
+    <meta name="color-scheme" content="dark light">
+    <script>
+        // Apply the saved theme before the first paint so there is no flash
+        try { var savedTheme = localStorage.getItem('drih-theme'); if (savedTheme) { document.documentElement.setAttribute('data-theme', savedTheme); } } catch (e) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="/static/css/style.css?v={{ asset_version }}">
 </head>
 <body>
-    <div class="bg-container"></div>
-    <div class="bg-overlay"></div>
+    <div class="bg" aria-hidden="true"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span></div>
+    <div class="bg-grid" aria-hidden="true"></div>
 
     <div class="app-container">
 
         <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="sidebar-logo">
-                <i class="ph ph-lifebuoy"></i>
-                <div>Ushahidi AI<small>Repo Intelligence Hub</small></div>
-            </div>
+            <a class="brand" href="/" onclick="switchTab('home'); return false;">
+                <span class="brand-mark"><i class="ph-fill ph-lifebuoy"></i></span>
+                <span class="brand-text"><strong>Ushahidi AI</strong><small>Repo Intelligence Hub</small></span>
+            </a>
+
             <nav class="nav-tabs vertical">
+                <span class="nav-label">Workspace</span>
                 <button class="tab-btn active" data-tab="home" onclick="switchTab('home')">
-                    <i class="ph ph-chat-circle-dots"></i> Ask
+                    <span class="nav-icon"><i class="ph ph-chat-circle-dots"></i></span> Ask
                 </button>
                 <button class="tab-btn" data-tab="codesearch" onclick="switchTab('codesearch')">
-                    <i class="ph ph-magnifying-glass"></i> Code Search <span class="pill pill-teal">fast</span>
+                    <span class="nav-icon"><i class="ph ph-magnifying-glass"></i></span> Code Search <span class="tag tag-teal">instant</span>
                 </button>
                 <button class="tab-btn" data-tab="questions" onclick="switchTab('questions')">
-                    <i class="ph ph-list-checks"></i> Test Dataset
+                    <span class="nav-icon"><i class="ph ph-list-checks"></i></span> Test Dataset
                 </button>
                 <button class="tab-btn" data-tab="chat" onclick="switchTab('chat')">
-                    <i class="ph ph-clock-counter-clockwise"></i> History
+                    <span class="nav-icon"><i class="ph ph-clock-counter-clockwise"></i></span> History <span class="tag" id="navHistoryCount">0</span>
                 </button>
+                <span class="nav-label">Project</span>
                 <button class="tab-btn" data-tab="github" onclick="switchTab('github')">
-                    <i class="ph ph-github-logo"></i> Repository
+                    <span class="nav-icon"><i class="ph ph-github-logo"></i></span> Repository
                 </button>
                 <button class="tab-btn" data-tab="about" onclick="switchTab('about')">
-                    <i class="ph ph-info"></i> About
+                    <span class="nav-icon"><i class="ph ph-info"></i></span> About
                 </button>
             </nav>
 
@@ -53,6 +62,11 @@
                     <div><span class="k">Last answer</span><span class="v" id="statLatency">–</span></div>
                 </div>
             </div>
+
+            <div class="sidebar-foot">
+                <button class="icon-btn" id="themeToggle" onclick="toggleTheme()" title="Switch between dark and light theme"><i class="ph ph-sun"></i><span>Light</span></button>
+                <a class="icon-btn" href="https://github.com/ushahidi/platform" target="_blank" rel="noopener" title="Ushahidi platform on GitHub"><i class="ph ph-github-logo"></i><span>Ushahidi</span></a>
+            </div>
         </aside>
 
         <main class="main-content">
@@ -62,36 +76,80 @@
 
                 <div id="chatHeader" class="chat-header">
                     <span class="eyebrow"><i class="ph ph-first-aid"></i> Ushahidi · crisis codebase assistant</span>
-                    <h1>Disaster Response<br>Intelligence Repo Hub</h1>
-                    <p>Ask about the Ushahidi codebase in plain English. Get the exact files and lines, a grounded explanation and an architecture diagram — <span class="highlight">in seconds, not days</span>.</p>
+                    <h1>Understand <span class="grad">Ushahidi</span><br>in seconds, not days.</h1>
+                    <p>Ask about the Ushahidi codebase in plain English. Get the exact files and lines, a grounded explanation and an architecture diagram, <span class="highlight">with every claim backed by real code</span>.</p>
+                </div>
+
+                <div class="chat-topbar">
+                    <h2><i class="ph ph-chat-circle-dots"></i> Ask</h2>
+                    <span class="spacer"></span>
+                    <button class="icon-btn" onclick="newChat()" title="Start a fresh conversation (history is kept)"><i class="ph ph-plus"></i> New chat</button>
                 </div>
 
                 <div id="chatMessages" class="chat-messages hidden"></div>
-
-                <div id="suggestionsBox" class="suggestions-container">
-                    <p class="suggestions-title">Try one of these</p>
-                    <div class="suggestions-row">
-                        <button class="suggestion-chip" onclick="askSuggestion('Where is an incoming SMS report parsed?')">Where is an incoming SMS report parsed? <i class="ph ph-arrow-right"></i></button>
-                        <button class="suggestion-chip" onclick="askSuggestion('Where is the map pin / post location logic?')">Where is the map pin logic? <i class="ph ph-arrow-right"></i></button>
-                        <button class="suggestion-chip" onclick="askSuggestion('Where are the V5 API routes for posts defined?')">Where are the V5 API routes defined? <i class="ph ph-arrow-right"></i></button>
-                        <button class="suggestion-chip" onclick="askSuggestion('How does the LanguagesController work?')">How does the LanguagesController work? <i class="ph ph-arrow-right"></i></button>
-                        <button class="suggestion-chip" onclick="askSuggestion('What data source plugins are supported?')">What data source plugins are supported? <i class="ph ph-arrow-right"></i></button>
-                        <button class="suggestion-chip" onclick="askSuggestion('How does the system check whether a user has Manage Posts permission?')">How are post permissions checked? <i class="ph ph-arrow-right"></i></button>
-                    </div>
-                </div>
 
                 <div class="search-container" id="mainSearchContainer">
                     <div class="search-box">
                         <i class="ph ph-sparkle search-icon"></i>
                         <input type="text" id="searchInput" placeholder="Ask anything about the Ushahidi codebase…" autocomplete="off" maxlength="1000">
                         <button class="send-btn" onclick="askQuestion()" title="Ask (Enter)">
-                            <i class="ph ph-paper-plane-right"></i>
+                            <i class="ph ph-arrow-up"></i>
                         </button>
                     </div>
                     <div class="input-hint">
                         <span><kbd>Enter</kbd> ask</span>
                         <span><kbd>/</kbd> focus</span>
+                        <span><kbd>⌘K</kbd> focus</span>
                         <span>Answers cite real files and line numbers</span>
+                    </div>
+                </div>
+
+                <div class="stat-strip" id="statStrip" aria-label="Index statistics">
+                    <div class="stat"><span class="stat-value" id="heroChunks">–</span><span class="stat-label">chunks indexed</span></div>
+                    <div class="stat"><span class="stat-value" id="heroMethods">–</span><span class="stat-label">PHP methods</span></div>
+                    <div class="stat"><span class="stat-value" id="heroDocs">–</span><span class="stat-label">doc sections</span></div>
+                    <div class="stat"><span class="stat-value" id="heroFiles">–</span><span class="stat-label">source files</span></div>
+                </div>
+
+                <div id="suggestionsBox" class="suggestions-container">
+                    <p class="suggestions-title">Try one of these</p>
+                    <div class="question-grid">
+                        <button class="qcard" onclick="askSuggestion('Where is an incoming SMS report parsed?')">
+                            <span class="qcard-icon amber"><i class="ph ph-chat-centered-text"></i></span>
+                            <span class="qcard-cat">Data sources</span>
+                            <span class="qcard-q">Where is an incoming SMS report parsed?</span>
+                            <i class="ph ph-arrow-up-right qcard-arrow"></i>
+                        </button>
+                        <button class="qcard" onclick="askSuggestion('Where is the map pin / post location logic?')">
+                            <span class="qcard-icon green"><i class="ph ph-map-pin"></i></span>
+                            <span class="qcard-cat">Maps</span>
+                            <span class="qcard-q">Where is the map pin logic?</span>
+                            <i class="ph ph-arrow-up-right qcard-arrow"></i>
+                        </button>
+                        <button class="qcard" onclick="askSuggestion('Where are the V5 API routes for posts defined?')">
+                            <span class="qcard-icon blue"><i class="ph ph-git-branch"></i></span>
+                            <span class="qcard-cat">REST API</span>
+                            <span class="qcard-q">Where are the V5 API routes defined?</span>
+                            <i class="ph ph-arrow-up-right qcard-arrow"></i>
+                        </button>
+                        <button class="qcard" onclick="askSuggestion('How does the LanguagesController work?')">
+                            <span class="qcard-icon violet"><i class="ph ph-translate"></i></span>
+                            <span class="qcard-cat">Controllers</span>
+                            <span class="qcard-q">How does the LanguagesController work?</span>
+                            <i class="ph ph-arrow-up-right qcard-arrow"></i>
+                        </button>
+                        <button class="qcard" onclick="askSuggestion('What data source plugins are supported?')">
+                            <span class="qcard-icon teal"><i class="ph ph-plugs-connected"></i></span>
+                            <span class="qcard-cat">Integrations</span>
+                            <span class="qcard-q">What data source plugins are supported?</span>
+                            <i class="ph ph-arrow-up-right qcard-arrow"></i>
+                        </button>
+                        <button class="qcard" onclick="askSuggestion('How does the system check whether a user has Manage Posts permission?')">
+                            <span class="qcard-icon pink"><i class="ph ph-shield-check"></i></span>
+                            <span class="qcard-cat">Permissions</span>
+                            <span class="qcard-q">How are post permissions checked?</span>
+                            <i class="ph ph-arrow-up-right qcard-arrow"></i>
+                        </button>
                     </div>
                 </div>
             </section>
@@ -103,7 +161,7 @@
                         <h2>Code Search</h2>
                         <span class="pill pill-teal"><i class="ph ph-lightning"></i> instant · no LLM</span>
                     </div>
-                    <p class="subtitle">Semantic + identifier search over every indexed chunk of Ushahidi. Type what you mean, not the exact name — results in well under a second.</p>
+                    <p class="subtitle">Semantic + identifier search over every indexed chunk of Ushahidi. Type what you mean, not the exact name; results arrive in well under a second.</p>
                     <div class="search-box compact">
                         <i class="ph ph-magnifying-glass search-icon"></i>
                         <input type="text" id="codeSearchInput" placeholder="e.g. where is the map pin logic, twilio webhook, post permission check" autocomplete="off" maxlength="500">
@@ -116,7 +174,7 @@
                     </div>
                     <div id="codeSearchMeta" class="search-meta"></div>
                     <div id="codeSearchResults" class="results-list">
-                        <div class="empty-state">Results show the file, line range, class and method, a relevance score, the code itself, and a link to the file on GitHub.</div>
+                        <div class="empty-state"><i class="ph ph-binoculars"></i>Results show the file, line range, class and method, a relevance score, the code itself, and a link to the file on GitHub.</div>
                     </div>
                 </div>
             </section>
@@ -131,7 +189,7 @@
                     </div>
                     <p class="subtitle">Every question and its summary is saved in this browser and survives a page refresh.</p>
                     <div id="chatHistoryList" class="history-list">
-                        <div class="empty-state">No questions asked yet. Start on the Ask tab.</div>
+                        <div class="empty-state"><i class="ph ph-clock-counter-clockwise"></i>No questions asked yet. Start on the Ask tab.</div>
                     </div>
                 </div>
             </section>
@@ -325,9 +383,12 @@
         <div class="modal-hint">Click anywhere or press Esc to close</div>
     </div>
 
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <script src="/static/js/script.js?v={{ asset_version }}"></script>
 </body>
 </html>

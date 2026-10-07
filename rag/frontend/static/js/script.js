@@ -1,12 +1,8 @@
 // Disaster Response Intelligence Repo Hub — frontend
 // Talks to:  POST /api/ask   GET /api/search   GET /api/stats
 
-if (window.mermaid) {
-    // "strict" stops LLM-generated diagrams from running scripts
-    mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' });
-}
-
 const USHAHIDI_REPO = 'https://github.com/ushahidi/platform';
+const THEME_KEY = 'drih-theme';
 let appStats = null;
 
 // ------------------------------------------------------------
@@ -26,9 +22,22 @@ function renderMarkdown(text) {
     return window.DOMPurify ? DOMPurify.sanitize(html) : escapeHtml(text);
 }
 
+// Syntax-highlight every <pre><code> inside `root`. highlight.js only adds
+// <span> tags to already-escaped text, so it is safe on sanitized HTML.
+function highlightCode(root) {
+    if (!window.hljs) return;
+    root.querySelectorAll('pre code').forEach(el => {
+        try { hljs.highlightElement(el); } catch (e) { /* leave plain text */ }
+    });
+}
+
 function fmtMs(ms) {
     if (ms == null) return '–';
     return ms >= 1000 ? (ms / 1000).toFixed(1) + ' s' : Math.round(ms) + ' ms';
+}
+
+function fmtNum(n) {
+    return Number(n || 0).toLocaleString();
 }
 
 function githubUrl(file, start, end) {
@@ -36,6 +45,42 @@ function githubUrl(file, start, end) {
     let url = `${USHAHIDI_REPO}/blob/${ref}/${file}`;
     if (start) url += `#L${start}` + (end && end !== start ? `-L${end}` : '');
     return url;
+}
+
+let toastTimer = null;
+function showToast(message, icon = 'ph-check-circle') {
+    const toast = $('toast');
+    if (!toast) return;
+    toast.innerHTML = `<i class="ph ${icon}"></i>${escapeHtml(message)}`;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+// ------------------------------------------------------------
+// Theme (dark by default, light on request; remembered per browser)
+// ------------------------------------------------------------
+function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+}
+
+function applyTheme(theme) {
+    if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* storage unavailable */ }
+    const button = $('themeToggle');
+    if (button) {
+        button.innerHTML = theme === 'light'
+            ? '<i class="ph ph-moon"></i><span>Dark</span>'
+            : '<i class="ph ph-sun"></i><span>Light</span>';
+    }
+}
+
+function toggleTheme() {
+    applyTheme(currentTheme() === 'light' ? 'dark' : 'light');
 }
 
 // ------------------------------------------------------------
@@ -49,7 +94,7 @@ function switchTab(tabId) {
 }
 
 // ------------------------------------------------------------
-// System status (sidebar)
+// System status (sidebar + hero numbers)
 // ------------------------------------------------------------
 // Right after a (re)start the server is still loading the embedding model,
 // so keep retrying for a while before declaring the index unavailable.
@@ -58,9 +103,14 @@ async function loadStats(attempt = 1) {
         const response = await fetch('/api/stats');
         if (!response.ok) throw new Error((await response.json()).error || 'stats unavailable');
         appStats = await response.json();
-        $('statChunks').textContent = appStats.chunks.toLocaleString() + ' chunks';
+        const byType = appStats.by_type || {};
+        $('statChunks').textContent = fmtNum(appStats.chunks) + ' chunks';
         $('statModel').textContent = (appStats.llm_model || '').split('/').pop() || '–';
         $('statCommit').textContent = (appStats.ushahidi_commit || '').slice(0, 8);
+        $('heroChunks').textContent = fmtNum(appStats.chunks);
+        $('heroMethods').textContent = fmtNum((byType.method || 0) + (byType.function || 0));
+        $('heroDocs').textContent = fmtNum(byType.doc || 0);
+        $('heroFiles').textContent = fmtNum(appStats.files);
         if (appStats.llm_configured) {
             setStatus('ok', 'Live · LLM + search');
         } else {
@@ -96,11 +146,39 @@ function askSuggestion(text) {
     askQuestion();
 }
 
+function newChat() {
+    $('chatMessages').innerHTML = '';
+    $('chatMessages').classList.add('hidden');
+    $('home').classList.remove('chat-mode');
+    $('chatHeader').classList.remove('minimized');
+    $('suggestionsBox').classList.remove('hidden');
+    $('searchInput').focus();
+}
+
 const PROGRESS_STEPS = [
-    [0, 'Searching the index…'],
-    [1200, 'Reranking the top 10 with the LLM…'],
-    [4500, 'Writing the answer and drawing the diagram…'],
+    [0, 'Searching the index', 'ph-magnifying-glass'],
+    [1200, 'Reranking the top 10 with the LLM', 'ph-sort-ascending'],
+    [4500, 'Writing the answer and drawing the diagram', 'ph-brain'],
 ];
+
+function pipelineHtml() {
+    return `<div class="pipeline" role="status">${PROGRESS_STEPS.map(([, label, icon], i) => `
+        <div class="step ${i === 0 ? 'active' : ''}" data-step="${i}">
+            <span class="step-icon"><i class="ph ${icon}"></i></span>
+            <span class="typing-status">${label}</span>
+            ${i === 0 ? '<span class="typing-indicator"><span></span><span></span><span></span></span>' : ''}
+        </div>`).join('')}</div>`;
+}
+
+function setPipelineStep(aiMsg, index) {
+    aiMsg.querySelectorAll('.step').forEach((el, i) => {
+        el.classList.toggle('done', i < index);
+        el.classList.toggle('active', i === index);
+    });
+    const dots = aiMsg.querySelector('.typing-indicator');
+    const active = aiMsg.querySelector('.step.active');
+    if (dots && active && !active.contains(dots)) active.appendChild(dots);
+}
 
 async function askQuestion() {
     const input = $('searchInput');
@@ -123,26 +201,18 @@ async function askQuestion() {
         <div class="msg-content">${escapeHtml(question)}</div>`;
     chatMessages.appendChild(userMsg);
 
-    // AI bubble with progress text
+    // AI bubble with pipeline progress
     const aiMsgId = 'ai-msg-' + Date.now();
     const aiMsg = document.createElement('div');
     aiMsg.className = 'message ai';
     aiMsg.id = aiMsgId;
     aiMsg.innerHTML = `
         <div class="msg-avatar"><i class="ph ph-robot"></i></div>
-        <div class="msg-content">
-            <div class="typing">
-                <div class="typing-indicator"><span></span><span></span><span></span></div>
-                <span class="typing-status">${PROGRESS_STEPS[0][1]}</span>
-            </div>
-        </div>`;
+        <div class="msg-content">${pipelineHtml()}</div>`;
     chatMessages.appendChild(aiMsg);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
-    const timers = PROGRESS_STEPS.slice(1).map(([delay, text]) => setTimeout(() => {
-        const el = aiMsg.querySelector('.typing-status');
-        if (el) el.textContent = text;
-    }, delay));
+    const timers = PROGRESS_STEPS.slice(1).map(([delay], i) => setTimeout(() => setPipelineStep(aiMsg, i + 1), delay));
 
     const content = aiMsg.querySelector('.msg-content');
     const started = performance.now();
@@ -255,6 +325,7 @@ function renderRichAnswer(aiMsgId, data) {
 
     html += `</div>`;
     container.innerHTML = html;
+    highlightCode(container);
 
     if (hasDiagram) {
         // LLM diagram first; the backup built from retrieved code if it fails
@@ -267,25 +338,31 @@ function sourceItemHtml(s, rank, withExplain = false) {
     const lines = s.start_line ? `L${s.start_line}${s.end_line && s.end_line !== s.start_line ? '–' + s.end_line : ''}` : '';
     const context = [s.class, s.method].filter(Boolean).join('::');
     const pct = Math.max(4, Math.min(100, Math.round((s.score || 0) * 100)));
+    const file = String(s.file || '');
+    const slash = file.lastIndexOf('/');
+    const dir = slash >= 0 ? file.slice(0, slash + 1) : '';
+    const name = slash >= 0 ? file.slice(slash + 1) : file;
+    const type = String(s.type || '').toLowerCase();
+    const language = type === 'doc' ? 'markdown' : 'php';
     const explain = withExplain
-        ? `<div class="source-actions"><button onclick="explainResult(${JSON.stringify(s.file)}, ${JSON.stringify(context)})"><i class="ph ph-sparkle"></i> Explain with AI</button></div>`
+        ? `<div class="source-actions"><button onclick="explainResult(${JSON.stringify(file)}, ${JSON.stringify(context)})"><i class="ph ph-sparkle"></i> Explain with AI</button></div>`
         : '';
     return `
         <details class="source-item">
             <summary>
                 <div class="source-top">
                     <span class="source-rank">${rank}</span>
-                    <span class="source-file"><i class="ph ph-file-php"></i>${escapeHtml(s.file)}</span>
+                    <span class="source-file"><i class="ph ${type === 'doc' ? 'ph-file-text' : 'ph-file-php'}"></i><span class="dir">${escapeHtml(dir)}</span><span class="name">${escapeHtml(name)}</span></span>
                     ${lines ? `<span class="source-lines">${lines}</span>` : ''}
-                    <a class="source-link" href="${githubUrl(s.file, s.start_line, s.end_line)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="ph ph-github-logo"></i> GitHub</a>
+                    <a class="source-link" href="${githubUrl(file, s.start_line, s.end_line)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="ph ph-github-logo"></i> GitHub</a>
                 </div>
                 <div class="source-bottom">
                     ${context ? `<span class="source-context">${escapeHtml(context)}</span>` : ''}
-                    <span class="source-type">${escapeHtml(s.type || '')}</span>
+                    ${type ? `<span class="source-type ${escapeHtml(type)}">${escapeHtml(type)}</span>` : ''}
                     ${s.score != null ? `<span class="score"><span class="score-bar"><span style="width:${pct}%"></span></span>${Number(s.score).toFixed(2)}</span>` : ''}
                 </div>
             </summary>
-            <pre class="source-code"><code>${escapeHtml(s.content)}</code></pre>
+            <pre class="source-code"><code class="language-${language}">${escapeHtml(s.content)}</code></pre>
             ${explain}
         </details>`;
 }
@@ -295,8 +372,9 @@ function copyAnswer(button) {
     const text = Array.from(card.querySelectorAll('[data-copy]')).map(el => el.innerText).join('\n\n');
     navigator.clipboard.writeText(text).then(() => {
         button.innerHTML = '<i class="ph ph-check"></i> Copied';
+        showToast('Answer copied to the clipboard');
         setTimeout(() => { button.innerHTML = '<i class="ph ph-copy"></i> Copy'; }, 1500);
-    });
+    }).catch(() => showToast('Could not access the clipboard', 'ph-warning'));
 }
 
 // ------------------------------------------------------------
@@ -316,6 +394,9 @@ async function renderDiagram(container, candidates) {
         containerEl.remove();
         return;
     }
+
+    // "strict" stops LLM-generated diagrams from running scripts
+    mermaid.initialize({ startOnLoad: false, theme: currentTheme() === 'light' ? 'neutral' : 'dark', securityLevel: 'strict' });
 
     for (const candidate of candidates) {
         if (!candidate) continue;
@@ -386,7 +467,8 @@ async function runCodeSearch() {
                           <span>for “${escapeHtml(query)}”</span>`;
         list.innerHTML = data.results.length
             ? data.results.map((s, i) => sourceItemHtml(s, i + 1, true)).join('')
-            : `<div class="empty-state">Nothing matched. Try describing what the code does.</div>`;
+            : `<div class="empty-state"><i class="ph ph-binoculars"></i>Nothing matched. Try describing what the code does.</div>`;
+        highlightCode(list);
     } catch (error) {
         meta.innerHTML = '';
         list.innerHTML = renderErrorCard(error.message);
@@ -454,18 +536,30 @@ function renderHistoryItem(question, answer, time) {
 function updateHistoryCount() {
     const n = document.querySelectorAll('#chatHistoryList .history-item').length;
     $('historyCount').textContent = `${n} saved`;
+    const nav = $('navHistoryCount');
+    if (nav) nav.textContent = String(n);
 }
 
 function clearHistory() {
     try { localStorage.removeItem(HISTORY_KEY); } catch (e) { /* ignore */ }
-    $('chatHistoryList').innerHTML = '<div class="empty-state">No questions asked yet. Start on the Ask tab.</div>';
+    $('chatHistoryList').innerHTML = '<div class="empty-state"><i class="ph ph-clock-counter-clockwise"></i>No questions asked yet. Start on the Ask tab.</div>';
     updateHistoryCount();
+    showToast('History cleared', 'ph-trash');
 }
 
 // ------------------------------------------------------------
 // Init
 // ------------------------------------------------------------
+const PLACEHOLDERS = [
+    'Ask anything about the Ushahidi codebase…',
+    'Where is an incoming SMS report parsed?',
+    'How does the V5 posts API check permissions?',
+    'What does the UpdateUsecase do?',
+    'Which data source plugins exist?',
+];
+
 document.addEventListener('DOMContentLoaded', () => {
+    applyTheme(currentTheme());
     loadStats();
 
     // Restore saved history (oldest first, so the newest ends up on top)
@@ -474,6 +568,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     $('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') askQuestion(); });
     $('codeSearchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') runCodeSearch(); });
+
+    // Rotate example questions in the empty, unfocused search box
+    let placeholderIndex = 0;
+    setInterval(() => {
+        const input = $('searchInput');
+        if (document.activeElement === input || input.value) return;
+        placeholderIndex = (placeholderIndex + 1) % PLACEHOLDERS.length;
+        input.placeholder = PLACEHOLDERS[placeholderIndex];
+    }, 3500);
 
     // Test Dataset questions are clickable
     document.querySelectorAll('.dataset-list li').forEach(li => {
@@ -484,10 +587,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Keyboard: "/" focuses the active search box, Esc closes the diagram
+    // Keyboard: "/" or Ctrl/Cmd+K focuses the active search box, Esc closes the diagram
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeDiagramModal();
-        if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+        const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+        const wantsFocus = (e.key === '/' && !typing) || (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey));
+        if (wantsFocus) {
             e.preventDefault();
             const active = document.querySelector('.tab-content.active');
             (active && active.id === 'codesearch' ? $('codeSearchInput') : $('searchInput')).focus();

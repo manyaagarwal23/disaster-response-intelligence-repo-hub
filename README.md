@@ -109,6 +109,23 @@ docker compose up --build             # http://localhost:8000   (PORT=8001 docke
 
 First start fetches Ushahidi at the pinned commit and builds the vector DB into the `rag-data` volume (20–40 min on CPU); later starts are instant. `/healthz` reports `database_ready`. For AWS EC2 or any Ubuntu VM see **[deploy/README.md](deploy/README.md)** (one script, works as EC2 user-data).
 
+## 💻 Viewing the UI from your laptop (VM setups)
+
+The app listens on **port 8080** inside the VM (`PORT=8080` in `.env`). A VM
+behind NAT is not reachable from the laptop by itself; use one of these:
+
+- **VS Code Remote-SSH (recommended, nothing to install):** open the
+  **PORTS** panel (Terminal area → PORTS, or *View → Open View… → Ports*)
+  → **Forward a Port** → `8080`. VS Code remembers it for this remote, and
+  `.vscode/settings.json` opens the browser automatically once the port is
+  forwarded. Then browse **http://localhost:8080** on the laptop.
+- **VirtualBox NAT rule (works without VS Code):** VM → Settings → Network →
+  Adapter 1 → Advanced → Port Forwarding → `TCP`, Host Port `8080`, Guest IP
+  `10.0.2.15`, Guest Port `8080`. Or on the laptop:
+  `VBoxManage controlvm "<VM name>" natpf1 "rag,tcp,,8080,,8080"`.
+
+The container restarts automatically with the VM (`docker start drih-app` if it was stopped).
+
 ## 🔌 API
 
 | Endpoint | What it returns |

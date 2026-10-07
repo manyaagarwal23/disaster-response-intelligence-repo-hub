@@ -86,15 +86,14 @@ def invoke_with_retry(llm, prompt, attempts=4, max_wait=65):
     is too large for the budget, or any other error occurs.
     """
 
-    from langchain_core.messages import HumanMessage
-
     last_error = ""
 
     for attempt in range(1, attempts + 1):
 
         try:
 
-            return llm.invoke([HumanMessage(content=prompt)]).content
+            # LangChain chat models accept a plain string as the user message
+            return llm.invoke(prompt).content
 
         except Exception as error:
 

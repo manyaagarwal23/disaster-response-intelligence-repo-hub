@@ -1,36 +1,113 @@
 name: Continuous Integration
 
-# Run this workflow every time code is pushed to the main branch or a Pull Request is opened
+# Fast safety net for rushed, disaster-time contributions:
+#   1. lint + unit tests      (~1 min, no ML libraries)  -> blocks bad changes quickly
+#   2. docker build + integration tests (only if 1 passes) -> proves the real stack works
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
+# A newer push to the same branch/PR cancels the outdated run
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   test:
+    name: Lint & unit tests
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: rag
+
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
-        python-version: '3.10'
+        python-version: '3.11'
+        cache: pip
+        cache-dependency-path: rag/requirements-dev.txt
 
-    - name: Clone Ushahidi Repository
-      run: git clone https://github.com/ushahidi/platform.git ushahidi
+    - name: Install lightweight dependencies
+      run: pip install -r requirements-dev.txt
 
-    - name: Install dependencies
+    - name: Lint (ruff - real bugs only)
+      run: ruff check --output-format=github .
+
+    # Pinned commit (~19 MB shallow) so the evaluation ground truth is
+    # checked against exactly the code that gets indexed
+    - name: Fetch pinned Ushahidi commit
       run: |
-        python -m pip install --upgrade pip
-        pip install pytest
-        if [ -f rag/requirements.txt ]; then pip install -r rag/requirements.txt; fi
+        COMMIT=$(python -c "import config; print(config.USHAHIDI_COMMIT)")
+        git init -q ../ushahidi
+        git -C ../ushahidi remote add origin https://github.com/ushahidi/platform.git
+        git -C ../ushahidi fetch -q --depth 1 origin "$COMMIT"
+        git -C ../ushahidi checkout -q FETCH_HEAD
 
-    - name: Run unit tests with pytest
+    - name: Unit tests
+      run: pytest -q
+
+  # Sweep-style auto-fix: on pull requests, apply Ruff's automatic fixes
+  # for flagged bug patterns and post them as one-click "suggested
+  # changes" review comments. Never fails the build.
+  suggest-fixes:
+    name: Auto-suggest fixes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+
+    - name: Apply automatic fixes locally
       run: |
-        cd rag
-        pytest tests/
+        pip install ruff==0.16.10
+        ruff check --fix --exit-zero rag
 
+    - name: Post fixes as PR suggestions
+      uses: reviewdog/action-suggester@v1
+      with:
+        tool_name: ruff-autofix
+
+  docker:
+    name: Docker build & integration tests
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        load: true
+        tags: disaster-response-rag:ci
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Integration tests (real ChromaDB + embedding model)
+      run: docker run --rm disaster-response-rag:ci pytest -m integration -q -p no:cacheprovider

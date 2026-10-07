@@ -1,0 +1,19 @@
+# Usage:
+#   echo "GROQ_API_KEY=gsk_..." > .env      (optional - without it you get search results only)
+#   docker compose up --build
+#   open http://localhost:8000      (PORT=8001 docker compose up  to use another port)
+services:
+  rag:
+    build: .
+    image: disaster-response-rag
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-qwen/qwen3.8-27b}
+    volumes:
+      - rag-data:/data
+    restart: unless-stopped
+
+volumes:
+  rag-data:

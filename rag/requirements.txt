@@ -1,9 +1,23 @@
-chromadb
-sentence-transformers
-tree-sitter
-tree-sitter-php
-fastapi
-uvicorn
-langchain
-langchain-groq
-pytest
+# Runtime dependencies (pinned so every machine, CI and Docker get the
+# same versions). Resolved together on Python 3.11.
+#
+# CPU-only torch is much smaller; install it first with:
+#   pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+
+# Vector database + embeddings
+chromadb==1.5.9
+sentence-transformers==6.1.0
+torch==2.14.1
+
+# PHP parsing
+tree-sitter==0.26.0
+tree-sitter-php==0.24.1
+
+# Web server
+fastapi==0.142.2
+uvicorn==0.54.0
+jinja2==3.1.6
+
+# LLM (Groq through LangChain)
+langchain-core==1.6.6
+langchain-groq==1.1.3

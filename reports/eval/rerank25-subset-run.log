@@ -1,0 +1,24 @@
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 22403.55it/s]
+Evaluating 7 questions: semantic, hybrid, llm
+
+23. semantic= -  hybrid= -  llm= 1   1.1s  Where is the permission to create a post checked?
+25. semantic= -  hybrid=10  llm= 3   0.7s  How does the system check whether a user has Manage Posts permission?
+28. semantic= -  hybrid= -  llm= 6   0.7s  What happens when a user without permissions tries to update a post?
+30. semantic= -  hybrid= -  llm= 1   0.7s  How does the system validate input data before creating a post?
+ 1. semantic= 1  hybrid= 1  llm= 1   1.0s  Where is the EntityExists contract defined?
+31. semantic= 1  hybrid= 1  llm= 1   1.3s  Where is an incoming SMS report parsed?
+LLM rate limit hit, waiting 2.5s (attempt 1/2)...
+33. semantic= -  hybrid= 3  llm= 1   3.8s  Where are the V5 API routes for posts defined?
+
+======================================================================
+RESULTS (top 10, 7 questions, Ushahidi 78f81b4b)
+======================================================================
+system        MRR@10     Hit@1     Hit@3     Hit@5
+semantic       0.286     28.6%     28.6%     28.6%
+hybrid         0.348     28.6%     42.9%     42.9%
+llm            0.786     71.4%     85.7%     85.7%
+
+Latency: mean 1.3 s, max 3.8 s per question
+
+Results written to /app/reports/eval/rerank25-subset.json
+exit 0

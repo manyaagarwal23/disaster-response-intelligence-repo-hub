@@ -25,7 +25,7 @@ We achieve this using **Retrieval-Augmented Generation (RAG)**, plus a fast CI p
 *   **LangChain + Groq:** calls a cloud LLM (default `qwen/qwen3.8-27b`, configurable with `GROQ_MODEL`) to rerank results and write the final answer. **Optional:** without an API key, or when Groq is rate-limited, the tool still works as a semantic search engine.
 
 ### Frontend (UI)
-*   **HTML / CSS / vanilla JavaScript**, dark "mission control" theme.
+*   **HTML / CSS / vanilla JavaScript**, the "Beacon" theme (dark by default, light theme toggle in the sidebar), with highlight.js for syntax-highlighted evidence.
 *   **Marked + DOMPurify:** render the LLM's markdown safely.
 *   **Mermaid.js:** draws the flowcharts the LLM generates (strict security mode), with a backup diagram built from the retrieved code if the LLM's diagram fails.
 
@@ -49,7 +49,7 @@ We achieve this using **Retrieval-Augmented Generation (RAG)**, plus a fast CI p
 1.  **User asks:** the browser sends the question to `/api/ask` (`app.py`).
 2.  **Semantic search:** `retrieval.py` embeds the question (with BGE's query instruction) and fetches the 30 closest chunks. If the question names a `.php` file, the search is limited to that file.
 3.  **Hybrid ranking:** each candidate's similarity gets small bonuses for exact identifier matches (e.g. the class `UpdateUsecase`), matching words in the code and call graph, and being a real implementation rather than an abstract declaration. **Code Search stops here** and returns the hits in well under a second.
-4.  **LLM reranking (optional):** `llm.py` asks the LLM to reorder the top 10. Any result it forgets keeps its place at the end, so nothing is lost. Short Groq rate-limit pauses are waited out automatically.
+4.  **LLM reranking (optional):** `llm.py` asks the LLM to reorder the top candidates (`RERANK_TOP_K` in `config.py`, with a short code preview of each). Any result it forgets keeps its place at the end, so nothing is lost. Short Groq rate-limit pauses are waited out automatically.
 5.  **Generation:** `generator.py` sends the best 3 chunks to the LLM and parses its JSON answer (summary, technical details, Mermaid diagram).
 6.  **Display:** the UI shows the answer cards, the diagram (or a backup diagram built from the retrieved code), timings, and the **actually retrieved** code as evidence (file, line numbers, expandable code, GitHub link). History is kept in the browser across refreshes.
 
@@ -70,13 +70,14 @@ On every push, GitHub Actions lints and runs the unit tests in about a minute. O
 *   `scripts/smoke_test_compose.sh`: proves the one-command start from scratch; writes `reports/compose-smoke-<date>.log`.
 *   `reports/`: health checks, evaluation runs, ingestion and smoke-test logs, AI reviews, generated-test reports. Outputs are always saved here, never only on screen.
 *   `docs/screenshots/`: UI screenshots before and after the redesign.
+*   `docs/slides/`: the team deck (v4 = v3 with the new UI screenshot on slide 10).
 *   `sweep.yaml`: configuration for the (discontinued) Sweep bot; kept for reference.
 *   `ushahidi/` (not committed): the Ushahidi source, checked out at the pinned commit in `rag/config.py`.
 
 ### 📁 The Core Engine (`rag/`)
 *   **`config.py`**: every path and setting in one place, overridable with environment variables; loads `.env`.
 *   **`app.py`**: the web server. Start it with `python app.py`.
-*   **`retrieval.py`**: the search engine, shared by the web app, the CLI and the evaluation; records timings.
+*   **`retrieval.py`**: the search engine, shared by the web app, the CLI and the evaluation; records timings. Also holds an optional BM25 keyword index (`LEXICAL_CANDIDATES`, off by default: measured, no gain).
 *   **`llm.py`**: the Groq client, rate-limit-aware retries, and the reranker.
 *   **`generator.py`**: builds the answer prompt and parses the LLM's JSON.
 *   **`rag_api.py`**: glues retrieval and generation together; also serves Code Search and stats.

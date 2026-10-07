@@ -1,0 +1,104 @@
+{
+  "when": "2026-10-07 17:48",
+  "ushahidi_commit": "78f81b4be6c9aa7cc0a49d6b9d53cf744f45d382",
+  "llm_model": "qwen/qwen3.8-27b",
+  "summary": {
+    "semantic": {
+      "queries": 7,
+      "mrr": 0.2857142857142857,
+      "hit@1": 28.571428571428573,
+      "hit@3": 28.571428571428573,
+      "hit@5": 28.571428571428573
+    },
+    "hybrid": {
+      "queries": 7,
+      "mrr": 0.34761904761904766,
+      "hit@1": 28.571428571428573,
+      "hit@3": 42.857142857142854,
+      "hit@5": 42.857142857142854
+    },
+    "llm": {
+      "queries": 7,
+      "mrr": 0.7857142857142857,
+      "hit@1": 71.42857142857143,
+      "hit@3": 85.71428571428571,
+      "hit@5": 85.71428571428571
+    }
+  },
+  "latency": {
+    "mean_s": 1.3218229482857038,
+    "max_s": 3.7732151969998995
+  },
+  "questions": [
+    {
+      "number": 23,
+      "question": "Where is the permission to create a post checked?",
+      "category": "Security & Permissions",
+      "seconds": 1.11,
+      "semantic": null,
+      "hybrid": null,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Modules/V5/Policies/PostPolicy.php:138"
+    },
+    {
+      "number": 25,
+      "question": "How does the system check whether a user has Manage Posts permission?",
+      "category": "Security & Permissions",
+      "seconds": 0.66,
+      "semantic": null,
+      "hybrid": 10,
+      "llm": 3,
+      "top_result": "src/Ushahidi/Core/Tool/Permissions/PostPermissions.php:130"
+    },
+    {
+      "number": 28,
+      "question": "What happens when a user without permissions tries to update a post?",
+      "category": "Security & Permissions",
+      "seconds": 0.69,
+      "semantic": null,
+      "hybrid": null,
+      "llm": 6,
+      "top_result": "src/Ushahidi/Modules/V5/Actions/Post/Commands/UpdatePostCommand.php:148"
+    },
+    {
+      "number": 30,
+      "question": "How does the system validate input data before creating a post?",
+      "category": "Security & Permissions",
+      "seconds": 0.73,
+      "semantic": null,
+      "hybrid": null,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Modules/V5/Requests/PostRequest.php:37"
+    },
+    {
+      "number": 1,
+      "question": "Where is the EntityExists contract defined?",
+      "category": "Architecture & Contracts",
+      "seconds": 0.97,
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Contracts/EntityExists.php:22"
+    },
+    {
+      "number": 31,
+      "question": "Where is an incoming SMS report parsed?",
+      "category": "Crisis onboarding (from the project brief)",
+      "seconds": 1.32,
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/DataSource/SMSSync/SMSSyncController.php:53"
+    },
+    {
+      "number": 33,
+      "question": "Where are the V5 API routes for posts defined?",
+      "category": "Crisis onboarding (from the project brief)",
+      "seconds": 3.77,
+      "semantic": null,
+      "hybrid": 3,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Modules/V5/routes/api.php:101"
+    }
+  ]
+}

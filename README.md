@@ -8,7 +8,7 @@ An AI onboarding assistant for the [Ushahidi](https://github.com/ushahidi/platfo
 
 | | |
 |---|---|
-| **Ask** | Plain-English questions → AI Summary, Technical Details, an architecture diagram (Mermaid) and the *actually retrieved* code as evidence, with file + line numbers and GitHub links. Every answer shows its timing. |
+| **Ask** | Plain-English questions → AI Summary, Technical Details, an architecture diagram (Mermaid) and the *actually retrieved* code as evidence, with file + line numbers, syntax highlighting and GitHub links. Every answer shows its timing; a pipeline stepper shows progress. Dark and light theme. |
 | **Code Search** | Instant semantic + identifier search over every indexed chunk, no LLM, well under a second. "Explain with AI" hands any hit to the Ask tab. |
 | **Works without an LLM** | No `GROQ_API_KEY`, or Groq down / rate-limited → you still get the search results, with a clear warning. |
 | **Measured, not claimed** | `evaluate.py` scores retrieval against a 33-question ground-truth dataset (MRR, Hit@k, latency) and saves every run under `reports/eval/`. |
@@ -38,7 +38,7 @@ ingestion.py ──► BGE embeddings ──► ChromaDB (5,698 chunks, rebuilt 
 Question ──► retrieval.py
                1. vector search (30 candidates, BGE query instruction)
                2. hybrid score  = similarity + identifier/code/structural/implementation bonuses
-               3. LLM rerank of the top 10        (optional, llm.py)        ──► GET /api/search stops here
+               3. LLM rerank of the top 25        (optional, llm.py)        ──► GET /api/search stops here
          ──► generator.py: top 3 chunks → LLM → JSON {simple, technical, diagram}
          ──► UI: answer cards + diagram (backup diagram if the LLM's fails) + evidence
 ```
@@ -69,6 +69,7 @@ Question ──► retrieval.py
 ├── scripts/smoke_test_compose.sh   # from-scratch `docker compose up` verification
 ├── reports/                 # health checks, eval runs, ingestion/smoke logs, AI reviews
 ├── docs/screenshots/        # UI screenshots (before/after)
+├── docs/slides/             # team deck (v4 = new UI screenshot)
 ├── Dockerfile, docker-compose.yml, .github/workflows/ci.yml
 ```
 
@@ -144,6 +145,7 @@ ruff check .
 pytest                    # unit tests, hand-written + tests/generated/ (seconds, no ML libraries)
 pytest -m integration     # end-to-end on a real ChromaDB + embedding model (needs requirements.txt)
 python evaluate.py        # retrieval benchmark → reports/eval/<timestamp>.json + latest.md
+python evaluate.py --questions 23,25,28 --pause 25   # a subset, paced for Groq's per-minute limits
 ```
 
 ### Retrieval evaluation
@@ -158,7 +160,9 @@ For each question in `eval/questions.json` the dataset lists the Ushahidi files 
 | hybrid | 0.614 | 51.5% | 66.7% | 75.8% |
 | **hybrid + LLM rerank** (used by the app) | **0.803** | **75.8%** | **81.8%** | **84.8%** |
 
-Weakest area: permission questions. For 3 of them the right file never reaches the 30 candidates, so no reranker can recover it. Answers take 2–10 s end to end, far inside the brief's one-minute target.
+Weakest area: permission questions, whose answer files sit at hybrid ranks 14–24 (the vocabulary differs: "permission" vs `PostPolicy` / `PostAuthorizer`). Since 2026-10-07 the LLM reranker therefore sees **25 candidates** (320-char previews) instead of 10; on the four affected questions this moved the first relevant file from missing to ranks 1, 3, 6 and 1, with no change on the control questions (`reports/eval/rerank25-subset-run.log`; one measured run, and the reranker is not deterministic across calls). Two other ideas were measured and rejected: a BM25 keyword index (`LEXICAL_CANDIDATES`, kept but off by default) and re-weighted identifier bonuses; neither improved the benchmark without hurting another question. Answers take 2–10 s end to end, far inside the brief's one-minute target.
+
+Tunables (environment variables, see `rag/config.py`): `RERANK_TOP_K` (25), `RERANK_PREVIEW_CHARS` (320), `LEXICAL_CANDIDATES` (0).
 
 ## 🛡 Safety net for rushed changes (CI)
 
@@ -181,6 +185,6 @@ cd rag && python tools/generate_tests.py --all           # → tests/generated/,
 
 ## 📝 Notes for the next phase
 
-- **Done beyond the first phase:** instant Code Search (the brief's Sourcegraph role, without an external service), AI review + generated regression tests (the Sweep / CodiumAI roles; Sweep's GitHub bot is discontinued, so `sweep.yaml` is inactive), Docker packaging verified from scratch, deployment script for EC2/VMs.
-- **Needs an account / credentials:** running on AWS (`deploy/README.md`), the `GROQ_API_KEY` repository secret for the PR safety net.
-- **Still open:** improving recall on permission questions, updating the architecture diagrams in the slides (they still show Ollama/Streamlit; the code uses Groq/FastAPI).
+- **Done:** instant Code Search (the brief's Sourcegraph role, without an external service), AI review + generated regression tests (the Sweep / CodiumAI roles; Sweep's GitHub bot is discontinued, so `sweep.yaml` is inactive), Docker packaging verified from scratch, deployment script for EC2/VMs, redesigned UI with light theme, deeper LLM reranking for the permission questions, team deck v4 with the new UI.
+- **Needs an account / credentials:** running on AWS (`deploy/README.md`), the `GROQ_API_KEY` repository secret for the PR safety net (repo admin only).
+- **Still open:** a full 33-question LLM evaluation with the new reranker depth (costs ~100K Groq tokens, half the free daily budget; run it on a quiet day), dependency-graph retrieval for deeper code relationships.

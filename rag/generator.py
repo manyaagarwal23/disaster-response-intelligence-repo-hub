@@ -1,7 +1,7 @@
 import json
 import re
 
-from llm import get_llm, strip_reasoning
+from llm import LLMRequestError, get_llm, invoke_with_retry, strip_reasoning
 
 
 MAX_CONTEXT_CHARS = 4000
@@ -117,22 +117,13 @@ def generate_answer(question, results):
 
         return None
 
-    from langchain_core.messages import HumanMessage
-
     try:
 
-        response = llm.invoke([
-            HumanMessage(content=build_answer_prompt(question, results))
-        ])
+        # Waits out short Groq rate-limit pauses instead of failing at once
+        reply = invoke_with_retry(llm, build_answer_prompt(question, results), attempts=3, max_wait=30)
 
-    except Exception as error:
+    except LLMRequestError as error:
 
-        if "429" in str(error):
+        raise GenerationError(str(error)) from error
 
-            raise GenerationError(
-                "Groq rate limit reached (HTTP 429). Wait a minute and try again."
-            ) from error
-
-        raise GenerationError(f"LLM request failed: {error}") from error
-
-    return parse_answer(response.content)
+    return parse_answer(reply)

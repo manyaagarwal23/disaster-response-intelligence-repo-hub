@@ -1,3 +1,4 @@
+import pytest
 import generator
 import llm
 from generator import build_answer_prompt, parse_answer
@@ -73,3 +74,45 @@ def test_no_api_key_means_no_llm(monkeypatch):
     assert llm.get_llm() is None
     assert llm.rerank("q", [RESULT]) is None
     assert generator.generate_answer("q", [RESULT]) is None
+
+
+def test_retry_hint_parsing():
+    msg = "Rate limit reached ... Limit 1000, Used 377, Requested 668. Please try again in 2.699999999s. Need more"
+    assert llm.retry_after_seconds(msg) == pytest.approx(2.7, abs=0.01)
+    assert llm.retry_after_seconds("try again in 350ms") == pytest.approx(0.35)
+    assert llm.retry_after_seconds("no hint here") is None
+    assert llm.is_rate_limit(msg) and not llm.is_rate_limit("connection refused")
+    # Budget partly used: worth retrying. Single prompt over the limit: not.
+    assert llm.prompt_too_large(msg) is False
+    assert llm.prompt_too_large("413 ... on input tokens per minute (ITPM): Limit 7000, Requested 13209") is True
+
+
+def test_invoke_with_retry_waits_then_succeeds(monkeypatch):
+    class Reply:
+        content = "2, 1"
+
+    class FlakyLLM:
+        calls = 0
+
+        def invoke(self, messages):
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("Error code: 429 - rate_limit_exceeded ... Please try again in 0.01s")
+            return Reply()
+
+    monkeypatch.setattr(llm.time, "sleep", lambda s: None)
+    flaky = FlakyLLM()
+
+    assert llm.invoke_with_retry(flaky, "p", attempts=3, max_wait=5) == "2, 1"
+    assert flaky.calls == 2
+
+
+def test_invoke_with_retry_gives_up(monkeypatch):
+    class DeadLLM:
+        def invoke(self, messages):
+            raise RuntimeError("Error code: 429 - rate_limit_exceeded. Please try again in 0.01s")
+
+    monkeypatch.setattr(llm.time, "sleep", lambda s: None)
+
+    with pytest.raises(llm.LLMRequestError):
+        llm.invoke_with_retry(DeadLLM(), "p", attempts=2)

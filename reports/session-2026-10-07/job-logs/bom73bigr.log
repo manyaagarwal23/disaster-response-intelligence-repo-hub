@@ -1,0 +1,11 @@
+Groq key 2 rejected (Error code: 401 - {'error': {'message': 'Invalid API Key', 'type': 'invalid_requ); skipping it from now on.
+All Groq keys exhausted; answering with local llama3.2:3b (slow).
+total 85s | timings {'retrieval_ms': 294, 'rerank_ms': 599, 'generation_ms': 77254, 'total_ms': 84959}
+llm_used: True | provider: ollama:llama3.2:3b
+warning: Every Groq key is rate-limited right now, so the local llama3.2:3b model wrote this short answer (slower and less precise). The diagram is built from the retrieved code.
+summary: The file is src/Ushahidi/DataSource/Sislog/SislogController.php and the class or method that answers it is SislogController::incoming. This method parses an incoming SMS report by extracting sender information from the request input 'msisdn' after removing non-numeric characters, allowing for alphanumeric sender names.
+diagram (backup from retrieved code): True
+top sources: ['SMSSyncController.php', 'SislogController.php', 'SMSSyncController.php']
+exit 0
+
+[exited with code 0]

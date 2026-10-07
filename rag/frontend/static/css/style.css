@@ -728,3 +728,25 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* Warning (search-only mode) and error cards */
+.warning-header { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-bottom-color: rgba(245, 158, 11, 0.3); }
+.warning-card { border-color: rgba(245, 158, 11, 0.3); }
+.error-header { background: rgba(239, 68, 68, 0.15); color: #f87171; border-bottom-color: rgba(239, 68, 68, 0.3); }
+.error-card { border-color: rgba(239, 68, 68, 0.3); }
+
+/* Expandable retrieved code in Repository Evidence */
+.source-item summary { list-style: none; cursor: pointer; display: flex; flex-direction: column; }
+.source-item summary::-webkit-details-marker { display: none; }
+.source-code {
+    margin-top: 0.6rem;
+    padding: 0.8rem;
+    max-height: 320px;
+    overflow: auto;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-main);
+    white-space: pre;
+}

@@ -1,126 +1,137 @@
 # Disaster Response Intelligence Repo Hub 🚀
 
-An AI onboarding assistant for the [Ushahidi](https://github.com/ushahidi/platform) crisis-mapping platform. A volunteer developer pulled into a crisis can ask *"where is an incoming SMS report parsed?"* and get the exact files and line numbers, an explanation, and a diagram in seconds. A fast CI pipeline acts as a safety net for rushed changes.
+An AI onboarding assistant for the [Ushahidi](https://github.com/ushahidi/platform) crisis-mapping platform. A volunteer developer pulled into a crisis can ask *"where is an incoming SMS report parsed?"* and get the exact files and line numbers, a grounded explanation and an architecture diagram in seconds. A fast CI pipeline with an AI safety net protects rushed changes.
 
-## ✨ Features
+![Ask tab](docs/screenshots/ui-home.png)
 
-- **Semantic code search:** questions are matched against PHP methods, route/config files and Ushahidi's markdown docs, stored as vectors in **ChromaDB**.
-- **Hybrid ranking:** vector similarity (BGE embeddings), boosted by exact identifier, code and call-graph matches. An optional **LLM reranker** (Groq via LangChain) then reorders the top 10.
-- **Grounded answers:** the LLM answers only from the retrieved code. "Repository Evidence" shows the chunks that were *actually retrieved* (file + line numbers + code), never sources the LLM claims.
-- **Works without an API key:** with no `GROQ_API_KEY` set, the app still returns search results. The same happens when the LLM is down or rate limited.
-- **Measured, not claimed:** `evaluate.py` scores retrieval against a 33-question ground-truth dataset (MRR, Hit@k).
-- **Fast CI:** lint + unit tests in about a minute, then a Docker build with end-to-end tests on a real vector DB.
+## ✨ What it does
 
-## 🛠 Tech Stack
+| | |
+|---|---|
+| **Ask** | Plain-English questions → AI Summary, Technical Details, an architecture diagram (Mermaid) and the *actually retrieved* code as evidence, with file + line numbers and GitHub links. Every answer shows its timing. |
+| **Code Search** | Instant semantic + identifier search over every indexed chunk, no LLM, well under a second. "Explain with AI" hands any hit to the Ask tab. |
+| **Works without an LLM** | No `GROQ_API_KEY`, or Groq down / rate-limited → you still get the search results, with a clear warning. |
+| **Measured, not claimed** | `evaluate.py` scores retrieval against a 33-question ground-truth dataset (MRR, Hit@k, latency) and saves every run under `reports/eval/`. |
+| **Safety net for rushed changes** | GitHub Actions: lint + unit tests in ~1 min, Docker build + integration tests, and on pull requests an AI review of the diff plus auto-generated regression tests. |
+| **One-command deploy** | Docker image with the embedding model baked in; `docker compose up` builds the vector DB on first start. `deploy/` has the EC2 / VM script. |
+
+## 🛠 Tech stack
 
 | Layer | Technology |
 |---|---|
 | Interface | FastAPI web UI (HTML/CSS/JS, Marked + DOMPurify, Mermaid), CLI (`search.py`) |
 | Application | `retrieval.py` (hybrid search), `rag_api.py`, `generator.py`, `llm.py` |
-| Model | Groq API, `qwen/qwen3.8-27b` by default (set `GROQ_MODEL` to change) |
+| Model | Groq API, `qwen/qwen3.8-27b` by default (`GROQ_MODEL` to change) |
 | Data | ChromaDB (cosine), Sentence Transformers `BAAI/bge-base-en-v1.5`, tree-sitter PHP parser |
-| DevOps | GitHub Actions, Docker / Docker Compose, Ruff, Pytest |
+| DevOps | GitHub Actions, Docker / Compose, Ruff, Pytest, `tools/ai_review.py`, `tools/generate_tests.py` |
 
 ## 🔄 How it works
 
 ```text
-Ushahidi repo (pinned commit)
+Ushahidi repo (pinned commit 78f81b4b)
    │  php_extractor.py  - tree-sitter: methods/functions (+ interfaces, traits, enums),
    │                      whole-file chunks for routes/config, line numbers
-   │  chunking.py       - split long methods into overlapping windows, markdown by heading
+   │  chunking.py       - split long methods into overlapping windows, markdown docs by heading
    ▼
-ingestion.py ──► BGE embeddings ──► ChromaDB  (rag/chroma_db, rebuilt on every run)
+ingestion.py ──► BGE embeddings ──► ChromaDB (5,698 chunks, rebuilt on every run)
 
 Question ──► retrieval.py
                1. vector search (30 candidates, BGE query instruction)
                2. hybrid score  = similarity + identifier/code/structural/implementation bonuses
-               3. LLM rerank of top 10   (optional, llm.py)
+               3. LLM rerank of the top 10        (optional, llm.py)        ──► GET /api/search stops here
          ──► generator.py: top 3 chunks → LLM → JSON {simple, technical, diagram}
-         ──► UI: answer cards + Mermaid diagram + retrieved evidence
+         ──► UI: answer cards + diagram (backup diagram if the LLM's fails) + evidence
 ```
 
-## 📂 Project Structure
+## 📂 Project structure
 
 ```text
 ├── rag/
-│   ├── app.py               # FastAPI server (/, /api/ask, /healthz)
-│   ├── config.py            # All paths & settings (env-overridable)
+│   ├── app.py               # FastAPI server: /, /api/ask, /api/search, /api/stats, /healthz
+│   ├── config.py            # All paths & settings (env-overridable, loads .env)
 │   ├── php_extractor.py     # tree-sitter PHP parser
 │   ├── chunking.py          # Chunk building, embedding text, metadata
 │   ├── ingestion.py         # Builds the ChromaDB vector database
-│   ├── retrieval.py         # Shared hybrid search (used by API, CLI, eval)
-│   ├── llm.py               # Groq client + LLM reranker
+│   ├── retrieval.py         # Shared hybrid search (API, CLI, evaluation)
+│   ├── llm.py               # Groq client, rate-limit-aware retries, reranker
 │   ├── generator.py         # Answer generation + JSON parsing
-│   ├── rag_api.py           # Retrieval + generation for one question
+│   ├── rag_api.py           # Ask / search / stats for one request
 │   ├── search.py            # CLI search
-│   ├── evaluate.py          # Retrieval evaluation (MRR, Hit@k)
+│   ├── evaluate.py          # Retrieval evaluation → reports/eval/
 │   ├── check_db.py          # Inspect the vector database
 │   ├── eval/questions.json  # Ground-truth dataset (33 questions)
-│   ├── tests/               # Unit + integration tests, fixture repo
+│   ├── tools/
+│   │   ├── ai_review.py     # Sweep-style AI review of a diff
+│   │   └── generate_tests.py# CodiumAI-style regression-test generator
+│   ├── tests/               # Unit + integration tests; tests/generated/ = auto-generated
 │   └── frontend/            # Web UI
-├── Dockerfile, docker-compose.yml
-├── .github/workflows/ci.yml
-└── sweep.yaml
+├── deploy/                  # install_on_ubuntu.sh (EC2 user-data / any VM) + README
+├── scripts/smoke_test_compose.sh   # from-scratch `docker compose up` verification
+├── reports/                 # health checks, eval runs, ingestion/smoke logs, AI reviews
+├── docs/screenshots/        # UI screenshots (before/after)
+├── Dockerfile, docker-compose.yml, .github/workflows/ci.yml
 ```
 
-## 🚀 Getting Started (local)
+## 🚀 Getting started (local)
 
 Requires **Python 3.11** (3.10–3.12 work; 3.13+ may lack wheels for some ML packages).
 
 ```bash
 git clone https://github.com/manyaagarwal23/disaster-response-intelligence-repo-hub.git
 cd disaster-response-intelligence-repo-hub
-python -m venv .venv
-source .venv/bin/activate            # Windows: .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 
 cd rag
 pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu   # CPU-only, much smaller
 pip install -r requirements.txt
 
-# 1. Get Ushahidi at the pinned commit (next to the rag/ folder)
+# 1. Ushahidi at the pinned commit (next to the rag/ folder)
 git clone https://github.com/ushahidi/platform.git ../ushahidi
 git -C ../ushahidi checkout 78f81b4be6c9aa7cc0a49d6b9d53cf744f45d382
 
 # 2. Build the vector database (~20-40 min on CPU, once)
 python ingestion.py
-python check_db.py                    # optional sanity check
 
-# 3. (Optional) enable LLM answers - without it you get search results only
-export GROQ_API_KEY="gsk_..."         # PowerShell: $env:GROQ_API_KEY="gsk_..."
+# 3. (Optional) enable LLM answers: put the key in ../.env  (never committed)
+echo "GROQ_API_KEY=gsk_..." > ../.env
 
 # 4. Run
-python app.py                         # http://localhost:8000
-python search.py "where is an incoming SMS report parsed"   # or use the CLI
+python app.py                                   # http://localhost:8000
+python search.py "where is an incoming SMS report parsed"   # CLI
 ```
 
 ## 🐳 Docker
 
 ```bash
 echo "GROQ_API_KEY=gsk_..." > .env    # optional
-docker compose up --build             # http://localhost:8000
+docker compose up --build             # http://localhost:8000   (PORT=8001 docker compose up for another port)
 ```
 
-On first start, the container fetches Ushahidi at the pinned commit and builds the vector DB into the `rag-data` volume (20–40 min on CPU). Later starts are instant. `/healthz` reports whether the DB is ready.
+First start fetches Ushahidi at the pinned commit and builds the vector DB into the `rag-data` volume (20–40 min on CPU); later starts are instant. `/healthz` reports `database_ready`. For AWS EC2 or any Ubuntu VM see **[deploy/README.md](deploy/README.md)** (one script, works as EC2 user-data).
 
-**Deploying to a VM (e.g. AWS EC2, at least 4 GB RAM):** install Docker, clone this repo, create `.env`, run `docker compose up -d --build`, and open port 8000 in the security group (or put a reverse proxy in front of it).
+## 🔌 API
 
-## 🧪 Testing & Evaluation
+| Endpoint | What it returns |
+|---|---|
+| `POST /api/ask` `{"question": "..."}` | `answer` (simple, technical, diagram_code, fallback_diagram_code), `sources` (file, lines, class, method, score, content), `llm_used`, `warning`, `timings` (retrieval / rerank / generation / total ms) |
+| `GET /api/search?q=...&k=10` | Instant hybrid search results (no LLM) + retrieval timing |
+| `GET /api/stats` | Chunk counts by type, pinned Ushahidi commit, models, whether the LLM is configured |
+| `GET /healthz` | Liveness + `database_ready` |
+
+## 🧪 Testing & evaluation
 
 ```bash
 cd rag
 pip install -r requirements-dev.txt
 ruff check .
-pytest                    # fast unit tests (seconds, no ML libraries needed)
-pytest -m integration     # end-to-end: real ChromaDB + embedding model (needs requirements.txt)
+pytest                    # unit tests, hand-written + tests/generated/ (seconds, no ML libraries)
+pytest -m integration     # end-to-end on a real ChromaDB + embedding model (needs requirements.txt)
+python evaluate.py        # retrieval benchmark → reports/eval/<timestamp>.json + latest.md
 ```
 
 ### Retrieval evaluation
 
-```bash
-python evaluate.py --output eval/results.json
-```
-
-For each question in `eval/questions.json`, the dataset lists the Ushahidi files that contain the answer. The script reports where the first correct file appears in three rankings: **semantic** (vector only), **hybrid**, and **llm** (hybrid + Groq rerank, only when `GROQ_API_KEY` is set).
+For each question in `eval/questions.json` the dataset lists the Ushahidi files that contain the answer. The script reports where the first correct file appears in three rankings: **semantic** (vector only), **hybrid**, and **llm** (hybrid + Groq rerank).
 
 **Latest results** (2026-10-07, Ushahidi `78f81b4`, 5,698 chunks, Groq `qwen/qwen3.8-27b`):
 
@@ -130,18 +141,29 @@ For each question in `eval/questions.json`, the dataset lists the Ushahidi files
 | hybrid | 0.614 | 51.5% | 66.7% | 75.8% |
 | **hybrid + LLM rerank** (used by the app) | **0.803** | **75.8%** | **81.8%** | **84.8%** |
 
-Weakest area: permission questions. For 3 of them ("Where is the permission to create a post checked?", "What happens when a user without permissions tries to update a post?", "How does the system validate input data before creating a post?"), the right file never reaches the 30 candidates, so no reranker can recover it.
+Weakest area: permission questions. For 3 of them the right file never reaches the 30 candidates, so no reranker can recover it. Answers take 2–10 s end to end, far inside the brief's one-minute target.
 
-## ⚙️ CI/CD
+## 🛡 Safety net for rushed changes (CI)
 
-`.github/workflows/ci.yml` runs on every push and pull request to `main`:
+`.github/workflows/ci.yml` runs on every push and pull request:
 
-1. **Lint & unit tests** (~1 min): Ruff (bug-catching rules), pytest, and a ground-truth check against the pinned Ushahidi commit.
-2. **Docker build & integration tests** (only if 1 passes): builds the production image and runs `pytest -m integration` inside it.
+1. **Lint & unit tests** (~1 min): Ruff (bug-catching rules), pytest including the auto-generated regression tests, and a ground-truth check against the pinned Ushahidi commit.
+2. **AI review & generated tests** (pull requests): `tools/ai_review.py` posts a risk review of the diff as a PR comment; `tools/generate_tests.py --changed` writes regression tests for changed modules (kept only if they pass); Ruff auto-fixes are posted as one-click suggestions. Needs the `GROQ_API_KEY` repository secret, otherwise the steps report "skipped". Advisory: it never blocks a merge.
+3. **Docker build & integration tests** (only if 1 passes).
 
-A newer push cancels the outdated run, so feedback stays fast under pressure.
+A newer push cancels the outdated run, so feedback stays fast under pressure. Both tools also run locally:
+
+```bash
+python rag/tools/ai_review.py --base origin/main        # → reports/ai-review-<date>.md
+cd rag && python tools/generate_tests.py --all           # → tests/generated/, reports/generated-tests-<date>.md
+```
+
+## ⚠️ Groq free-tier limits
+
+`qwen/qwen3.8-27b` on the free tier allows about **30 requests, 8K input tokens and 1K output tokens per minute, 200K tokens per day**. The app waits out short "try again in N s" pauses automatically and falls back to search-only when the budget is exhausted. One full `evaluate.py` run uses most of a day's budget, so on a demo day run it early or set `GROQ_MODEL` to another model.
 
 ## 📝 Notes for the next phase
 
-- **Added ahead of plan (working, not yet demoed):** Docker/Compose packaging with a CI Docker stage, a PR job that suggests Ruff fixes (Sweep's GitHub bot is discontinued, so `sweep.yaml` is inactive), markdown-doc indexing, and search-only mode without a Groq key.
-- **Still to do from the brief:** deploying to AWS/VM, CodiumAI/Qodo-generated regression tests, Sourcegraph integration, and updating the architecture diagrams (they still show Ollama/Streamlit, but the code uses Groq/FastAPI).
+- **Done beyond the first phase:** instant Code Search (the brief's Sourcegraph role, without an external service), AI review + generated regression tests (the Sweep / CodiumAI roles; Sweep's GitHub bot is discontinued, so `sweep.yaml` is inactive), Docker packaging verified from scratch, deployment script for EC2/VMs.
+- **Needs an account / credentials:** running on AWS (`deploy/README.md`), the `GROQ_API_KEY` repository secret for the PR safety net.
+- **Still open:** improving recall on permission questions, updating the architecture diagrams in the slides (they still show Ollama/Streamlit; the code uses Groq/FastAPI).

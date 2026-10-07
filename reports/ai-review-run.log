@@ -1,0 +1,113 @@
+reviewing part 1/10 (10314 chars)...
+reviewing part 2/10 (6416 chars)...
+reviewing part 3/10 (16042 chars)...
+reviewing part 4/10 (16042 chars)...
+reviewing part 5/10 (16042 chars)...
+reviewing part 6/10 (14099 chars)...
+reviewing part 7/10 (15921 chars)...
+reviewing part 8/10 (8947 chars)...
+reviewing part 9/10 (8108 chars)...
+reviewing part 10/10 (11196 chars)...
+## 🤖 AI review of changes vs `HEAD`
+
+27 file(s) reviewed with `qwen/qwen3.8-27b` on 2026-10-07. Advisory: a human still decides.
+
+### 🔴 HIGH — `deploy/install_on_ubuntu.sh`:6
+
+**Issue:** The documentation comment contains a hardcoded API key prefix ('gsk_...') which encourages users to paste real secrets into shell history or command lines, creating a risk of credential leakage.
+
+**Suggested fix:** Remove the example key from the comment and instruct users to set the GROQ_API_KEY environment variable securely (e.g., via a .env file or secret manager) without showing a real-looking key format.
+
+### 🔴 HIGH — `rag/evaluate.py`:233
+
+**Issue:** Calling os.path.dirname on a relative filename (e.g., 'results.json') returns an empty string, causing os.makedirs to raise a FileNotFoundError and crashing the script after evaluation completes.
+
+**Suggested fix:** Check if the directory path is non-empty before calling os.makedirs, or use Path(output).parent.mkdir(parents=True, exist_ok=True) which handles relative paths correctly.
+
+### 🔴 HIGH — `rag/frontend/static/js/script.js`:196
+
+**Issue:** The `copyAnswer` function is referenced in the generated HTML via an inline `onclick` attribute, but it is not defined anywhere in the provided diff. This will cause a `ReferenceError` when the user clicks the button.
+
+**Suggested fix:** Define the `copyAnswer` function in the script to handle copying the text content of the associated answer element to the clipboard.
+
+### 🔴 HIGH — `rag/tools/generate_tests.py`:152
+
+**Issue:** The `safety_problems` check uses simple substring matching against a list of forbidden strings (e.g., 'subprocess', 'socket'). This is trivially bypassed by the LLM using obfuscation (e.g., `getattr(__import__('subprocess'), 'run')` or `import subprocess as sp`), allowing generated tests to execute arbitrary code or access the network/filesystem, which violates the safety constraints and could compromise the CI environment.
+
+**Suggested fix:** Use `ast` to parse the generated code and explicitly check `Import` and `ImportFrom` nodes against a whitelist of allowed modules (e.g., `pytest`, `os`, `pathlib`, `re`, `json`, `datetime`, `math`, `typing`). Also inspect `Call` nodes to ensure no forbidden functions (like `os.system`, `subprocess.run`) are called, rather than relying on string matching.
+
+### 🟠 MEDIUM — `deploy/install_on_ubuntu.sh`:55
+
+**Issue:** The script writes the GROQ_API_KEY to a .env file in the application directory. If the directory permissions are not strictly controlled or if the file is accidentally committed to version control, the secret could be exposed.
+
+**Suggested fix:** Ensure the .env file is explicitly added to .gitignore and verify that the APP_DIR permissions restrict access to the service user only. Consider using a dedicated secrets manager or environment variable injection at runtime instead of persisting secrets to disk.
+
+### 🟠 MEDIUM — `.github/workflows/ci.yml`:10
+
+**Issue:** Changing the push trigger from 'main' to '**' means CI will run on every branch push, including feature branches and forks. This can significantly increase CI costs and resource usage, especially in a crisis scenario with many rapid branches.
+
+**Suggested fix:** Revert the push trigger to 'main' or limit it to specific protected branches to avoid unnecessary CI runs on all branches.
+
+### 🟠 MEDIUM — `.github/workflows/ci.yml`:85
+
+**Issue:** The AI review step uses 'origin/${{ github.base_ref }}' which may not exist if the base branch is not fetched or if the workflow runs on a fork where the base ref is not available. This could cause the step to fail or behave unexpectedly.
+
+**Suggested fix:** Ensure the base branch is fetched before running the AI review, or use a more robust method to determine the base commit (e.g., using 'github.event.pull_request.base.sha').
+
+### 🟠 MEDIUM — `rag/evaluate.py`:235
+
+**Issue:** The code mixes pathlib.Path objects (REPORTS_DIR) with os.path functions (os.makedirs, open), which can lead to type inconsistencies and potential failures on Windows where pathlib handles separators differently than os.path in some edge cases.
+
+**Suggested fix:** Use pathlib consistently: replace os.makedirs with Path(output).parent.mkdir(parents=True, exist_ok=True) and ensure output is treated as a Path object.
+
+### 🟠 MEDIUM — `rag/frontend/static/js/script.js`:196
+
+**Issue:** Using inline `onclick` handlers in dynamically generated HTML is less secure and maintainable than event delegation or direct listener attachment, especially in a context where XSS prevention is a priority.
+
+**Suggested fix:** Replace the inline `onclick` with a `data-action` attribute and attach a single event listener to the container that handles the copy logic.
+
+### 🟠 MEDIUM — `rag/llm.py`:113
+
+**Issue:** The retry loop uses `time.sleep` which blocks the worker thread. In a multi-threaded web server, a rate-limited request can hold a worker for up to `attempts * max_wait` seconds (e.g., 195s for generation), causing resource exhaustion and blocking other requests.
+
+**Suggested fix:** Use an asynchronous sleep (e.g., `asyncio.sleep`) if the application is async, or implement a non-blocking retry mechanism (e.g., returning a 503 with a Retry-After header) to free the worker thread.
+
+### 🟠 MEDIUM — `rag/tools/ai_review.py`:273
+
+**Issue:** The script writes the LLM-generated report directly to the GITHUB_STEP_SUMMARY file without sanitization. If the LLM outputs Markdown that breaks out of the summary context or contains malicious HTML/links, it could lead to GitHub Actions UI injection or misleading CI reports.
+
+**Suggested fix:** Sanitize the report content before writing to GITHUB_STEP_SUMMARY, or ensure the LLM prompt strictly forbids HTML and that the output is treated as plain text/Markdown only.
+
+### 🟠 MEDIUM — `rag/tools/ai_review.py`:277
+
+**Issue:** The script passes the local file path of the report to `gh pr comment --body-file`. If the `output` path is user-controlled via `--output` and points to a file containing sensitive data or malicious content, it will be posted publicly to the PR. Additionally, if the path contains special characters, it might cause issues with the subprocess call.
+
+**Suggested fix:** Validate that the output path is within the expected reports directory or sanitize the path. Ensure the file content is strictly the generated report and not arbitrary user input.
+
+### 🟠 MEDIUM — `rag/tools/generate_tests.py`:165
+
+**Issue:** The script truncates the source code to `MAX_SOURCE_CHARS` (14000) before sending it to the LLM. If a module is larger than this limit, the LLM will only see a partial file, potentially leading to generated tests that import or call functions that are not visible in the truncated context, or tests that are incorrect because they rely on context that was cut off.
+
+**Suggested fix:** Check the length of the source code before truncation. If it exceeds `MAX_SOURCE_CHARS`, either skip the module with a warning log, or implement a more robust chunking strategy that ensures the LLM has the full context of the functions it is expected to test (e.g., by only including the specific function definitions and their imports).
+
+### 🟡 LOW — `rag/llm.py`:113
+
+**Issue:** The `max_wait` parameter is used as the default wait time when `retry_after_seconds` returns None. This means if the error message doesn't contain a parseable delay, the code waits the full `max_wait` (30s or 15s) before retrying, which may be unnecessarily long for transient errors that don't specify a delay.
+
+**Suggested fix:** Use a smaller default backoff (e.g., 1-2 seconds) when `retry_after_seconds` returns None, and only use `max_wait` as a hard cap for parsed values.
+
+### 🟡 LOW — `rag/tools/ai_review.py`:106
+
+**Issue:** The regex `re.search(r"\[.*\]", text, re.DOTALL)` is greedy and will match from the first `[` to the last `]` in the entire response. If the LLM includes explanatory text with brackets before or after the JSON array, or if the JSON array itself contains nested brackets (unlikely for this schema but possible in strings), the extraction might fail or capture incorrect content.
+
+**Suggested fix:** Use a more specific regex to find the JSON array, such as `re.search(r"\[\s*\{.*\}\s*\]", text, re.DOTALL)`, or try to parse the whole text first and fall back to regex extraction.
+
+### 🟡 LOW — `scripts/smoke_test_compose.sh`:41
+
+**Issue:** The variable `$BUILD_FLAG` is used unquoted in the `compose up` command. While the value is currently constrained to either empty or `--build`, unquoted variables in shell scripts are a common source of bugs if the logic changes or if the variable contains spaces or special characters in the future.
+
+**Suggested fix:** Quote the variable to ensure it is treated as a single argument: `compose up "$BUILD_FLAG" -d`.
+
+
+Report written to /home/vboxuser/disaster-response-intelligence-repo-hub/reports/ai-review-2026-10-07.md
+exit 0

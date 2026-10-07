@@ -1,0 +1,291 @@
+{
+  "summary": {
+    "semantic": {
+      "queries": 33,
+      "mrr": 0.5871212121212122,
+      "hit@1": 48.484848484848484,
+      "hit@3": 63.63636363636363,
+      "hit@5": 72.72727272727273
+    },
+    "hybrid": {
+      "queries": 33,
+      "mrr": 0.6135040885040883,
+      "hit@1": 51.515151515151516,
+      "hit@3": 66.66666666666667,
+      "hit@5": 75.75757575757575
+    },
+    "llm": {
+      "queries": 33,
+      "mrr": 0.8026094276094276,
+      "hit@1": 75.75757575757575,
+      "hit@3": 81.81818181818181,
+      "hit@5": 84.84848484848484
+    }
+  },
+  "questions": [
+    {
+      "question": "Where is the EntityExists contract defined?",
+      "category": "Architecture & Contracts",
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Contracts/EntityExists.php:22"
+    },
+    {
+      "question": "What does EntityExists::exists() define?",
+      "category": "Architecture & Contracts",
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Contracts/EntityExists.php:22"
+    },
+    {
+      "question": "Where is verifyEntityLoaded declared abstract and where is it implemented?",
+      "category": "Architecture & Contracts",
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Usecase/Concerns/VerifyFormLoaded.php:108"
+    },
+    {
+      "question": "What exception is thrown when an entity cannot be found?",
+      "category": "Architecture & Contracts",
+      "semantic": 6,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Exception/NotFoundException.php:1"
+    },
+    {
+      "question": "How does the system verify that an entity was actually loaded?",
+      "category": "Architecture & Contracts",
+      "semantic": 4,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Usecase/Concerns/VerifyEntityLoaded.php:32"
+    },
+    {
+      "question": "Which repository method is used to load an entity before verification?",
+      "category": "Architecture & Contracts",
+      "semantic": 1,
+      "hybrid": 2,
+      "llm": 2,
+      "top_result": "src/Ushahidi/Core/Usecase/Concerns/VerifyEntityLoaded.php:32"
+    },
+    {
+      "question": "Where is the actual implementation of verifyEntityLoaded?",
+      "category": "Architecture & Contracts",
+      "semantic": 3,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Usecase/Concerns/VerifyEntityLoaded.php:32"
+    },
+    {
+      "question": "Which use cases call verifyEntityLoaded?",
+      "category": "Architecture & Contracts",
+      "semantic": 3,
+      "hybrid": 8,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Usecase/UpdateUsecase.php:123"
+    },
+    {
+      "question": "Show me how the EntityExists interface is structured.",
+      "category": "Architecture & Contracts",
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Contracts/EntityExists.php:22"
+    },
+    {
+      "question": "What happens if the exists() method returns false?",
+      "category": "Architecture & Contracts",
+      "semantic": 1,
+      "hybrid": 5,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Contracts/EntityExists.php:22"
+    },
+    {
+      "question": "What happens after an entity is loaded in UpdateUsecase?",
+      "category": "Posts & Usecases",
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Usecase/UpdateUsecase.php:72"
+    },
+    {
+      "question": "Where is verifyEntityLoaded implemented and which parts of the system call it?",
+      "category": "Posts & Usecases",
+      "semantic": 3,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Usecase/Concerns/VerifyEntityLoaded.php:32"
+    },
+    {
+      "question": "Show me the code for the UpdateUsecase class.",
+      "category": "Posts & Usecases",
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Usecase/UpdateUsecase.php:72"
+    },
+    {
+      "question": "What dependencies are injected into the UpdateUsecase?",
+      "category": "Posts & Usecases",
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Usecase/UpdateUsecase.php:53"
+    },
+    {
+      "question": "How does the CreateSetPost usecase work?",
+      "category": "Posts & Usecases",
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Usecase/Set/CreateSetPost.php:28"
+    },
+    {
+      "question": "Show me how a post is updated in the system.",
+      "category": "Posts & Usecases",
+      "semantic": 6,
+      "hybrid": 6,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Modules/V5/Actions/Post/Handlers/UpdatePostCommandHandler.php:61"
+    },
+    {
+      "question": "What methods does the PostRepository provide?",
+      "category": "Posts & Usecases",
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Modules/V3/Repository/PostRepository.php:134"
+    },
+    {
+      "question": "How does the system handle fetching entities from the database?",
+      "category": "Posts & Usecases",
+      "semantic": 4,
+      "hybrid": 5,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Usecase/ReadUsecase.php:67"
+    },
+    {
+      "question": "Which classes implement the EntityExists contract?",
+      "category": "Posts & Usecases",
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 8,
+      "top_result": "src/Ushahidi/Contracts/Repository/Entity/NotificationRepository.php:1"
+    },
+    {
+      "question": "Explain what the ReadUsecase does.",
+      "category": "Posts & Usecases",
+      "semantic": 6,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Usecase/ReadUsecase.php:67"
+    },
+    {
+      "question": "How does the system prevent an unauthorized user from creating a post?",
+      "category": "Security & Permissions",
+      "semantic": 4,
+      "hybrid": 5,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Core/Tool/Authorizer/PostAuthorizer.php:72"
+    },
+    {
+      "question": "Where is the user's role checked when creating a post?",
+      "category": "Security & Permissions",
+      "semantic": 1,
+      "hybrid": 2,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Modules/V5/Policies/PostPolicy.php:265"
+    },
+    {
+      "question": "Where is the permission to create a post checked?",
+      "category": "Security & Permissions",
+      "semantic": null,
+      "hybrid": null,
+      "llm": null,
+      "top_result": "src/Ushahidi/Modules/V3/Validator/Post/Create.php:173"
+    },
+    {
+      "question": "How does the system determine which roles can create posts?",
+      "category": "Security & Permissions",
+      "semantic": 1,
+      "hybrid": 9,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Modules/V5/Policies/PostPolicy.php:265"
+    },
+    {
+      "question": "How does the system check whether a user has Manage Posts permission?",
+      "category": "Security & Permissions",
+      "semantic": null,
+      "hybrid": 10,
+      "llm": 4,
+      "top_result": "src/Ushahidi/Core/Tool/Permissions/PostPermissions.php:130"
+    },
+    {
+      "question": "Show me the code that validates user permissions.",
+      "category": "Security & Permissions",
+      "semantic": 8,
+      "hybrid": 7,
+      "llm": 9,
+      "top_result": "src/Ushahidi/Core/Tool/Permissions/PostPermissions.php:32"
+    },
+    {
+      "question": "How does the API prevent unauthorized access to usecases?",
+      "category": "Security & Permissions",
+      "semantic": 1,
+      "hybrid": 3,
+      "llm": 2,
+      "top_result": "src/Ushahidi/Modules/V3/Factory/UsecaseFactory.php:97"
+    },
+    {
+      "question": "What happens when a user without permissions tries to update a post?",
+      "category": "Security & Permissions",
+      "semantic": null,
+      "hybrid": null,
+      "llm": null,
+      "top_result": "src/Ushahidi/Modules/V5/Actions/Post/Handlers/UpdatePostCommandHandler.php:61"
+    },
+    {
+      "question": "Explain how roles are assigned to users in the system.",
+      "category": "Security & Permissions",
+      "semantic": 2,
+      "hybrid": 3,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Modules/V5/Policies/RolePolicy.php:82"
+    },
+    {
+      "question": "How does the system validate input data before creating a post?",
+      "category": "Security & Permissions",
+      "semantic": null,
+      "hybrid": null,
+      "llm": null,
+      "top_result": "src/Ushahidi/Modules/V5/Models/Post/Post.php:374"
+    },
+    {
+      "question": "Where is an incoming SMS report parsed?",
+      "category": "Crisis onboarding (from the project brief)",
+      "semantic": 1,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/DataSource/SMSSync/SMSSyncController.php:53"
+    },
+    {
+      "question": "Where is the map pin / post location logic?",
+      "category": "Crisis onboarding (from the project brief)",
+      "semantic": 2,
+      "hybrid": 1,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Modules/V5/Models/PostValues/PostPoint.php:54"
+    },
+    {
+      "question": "Where are the V5 API routes for posts defined?",
+      "category": "Crisis onboarding (from the project brief)",
+      "semantic": null,
+      "hybrid": 3,
+      "llm": 1,
+      "top_result": "src/Ushahidi/Modules/V5/routes/api.php:101"
+    }
+  ]
+}

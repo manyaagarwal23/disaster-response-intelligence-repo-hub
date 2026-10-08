@@ -7,41 +7,47 @@ parser = Parser(
 )
 
 
+# Node types that declare a named type which can contain methods
+TYPE_DECLARATIONS = {
+    "class_declaration": "class",
+    "interface_declaration": "interface",
+    "trait_declaration": "trait",
+    "enum_declaration": "enum",
+}
+
+
+def node_text(node, code_bytes):
+
+    return code_bytes[
+        node.start_byte:
+        node.end_byte
+    ].decode("utf-8", errors="ignore")
+
+
 # ============================================================
 # Extract Method Calls
 # ============================================================
 
-def extract_method_calls(node, code):
+def extract_method_calls(node, code_bytes):
 
     calls = []
 
     def visit(current):
 
-        if current.type == "member_call_expression":
+        if current.type in (
+            "member_call_expression",
+            "scoped_call_expression",
+        ):
 
-            object_node = current.child_by_field_name("object")
+            object_node = (
+                current.child_by_field_name("object")
+                or current.child_by_field_name("scope")
+            )
             name_node = current.child_by_field_name("name")
 
-            object_text = ""
-            method_name = ""
-
-            if object_node:
-
-                object_text = code[
-                    object_node.start_byte:
-                    object_node.end_byte
-                ]
-
-            if name_node:
-
-                method_name = code[
-                    name_node.start_byte:
-                    name_node.end_byte
-                ]
-
             calls.append({
-                "object": object_text,
-                "method": method_name
+                "object": node_text(object_node, code_bytes) if object_node else "",
+                "method": node_text(name_node, code_bytes) if name_node else "",
             })
 
         for child in current.children:
@@ -57,30 +63,25 @@ def extract_method_calls(node, code):
 # Extract Parameter Types
 # ============================================================
 
-def extract_parameter_types(node, code):
+def extract_parameter_types(node, code_bytes):
 
     parameters = {}
 
     def visit(current):
 
-        if current.type == "simple_parameter":
+        if current.type in (
+            "simple_parameter",
+            "property_promotion_parameter",
+        ):
 
             type_node = current.child_by_field_name("type")
             name_node = current.child_by_field_name("name")
 
             if type_node and name_node:
 
-                parameter_type = code[
-                    type_node.start_byte:
-                    type_node.end_byte
-                ]
-
-                parameter_name = code[
-                    name_node.start_byte:
-                    name_node.end_byte
-                ]
-
-                parameters[parameter_name] = parameter_type
+                parameters[node_text(name_node, code_bytes)] = node_text(
+                    type_node, code_bytes
+                )
 
         for child in current.children:
 
@@ -95,7 +96,7 @@ def extract_parameter_types(node, code):
 # Extract Property Assignments
 # ============================================================
 
-def extract_property_assignments(node, code):
+def extract_property_assignments(node, code_bytes):
 
     assignments = []
 
@@ -106,26 +107,9 @@ def extract_property_assignments(node, code):
             left_node = current.child_by_field_name("left")
             right_node = current.child_by_field_name("right")
 
-            left_text = ""
-            right_text = ""
-
-            if left_node:
-
-                left_text = code[
-                    left_node.start_byte:
-                    left_node.end_byte
-                ]
-
-            if right_node:
-
-                right_text = code[
-                    right_node.start_byte:
-                    right_node.end_byte
-                ]
-
             assignments.append({
-                "left": left_text,
-                "right": right_text
+                "left": node_text(left_node, code_bytes) if left_node else "",
+                "right": node_text(right_node, code_bytes) if right_node else "",
             })
 
         for child in current.children:
@@ -138,14 +122,72 @@ def extract_property_assignments(node, code):
 
 
 # ============================================================
+# Build one unit (method or function)
+# ============================================================
+
+def build_unit(node, code_bytes, namespace, current_type, unit_type):
+
+    name_node = node.child_by_field_name("name")
+
+    body_node = node.child_by_field_name("body")
+
+    modifiers = {
+        child.type
+        for child in node.children
+    }
+
+    type_name, type_kind = current_type or (None, None)
+
+    return {
+
+        "namespace": namespace,
+
+        "class": type_name,
+
+        "class_kind": type_kind,
+
+        "method": node_text(name_node, code_bytes),
+
+        "type": unit_type,
+
+        # A method without a body is only a declaration
+        # (interface method or abstract method)
+        "abstract": (
+            body_node is None
+            or "abstract_modifier" in modifiers
+        ),
+
+        "start_line": node.start_point[0] + 1,
+
+        "end_line": node.end_point[0] + 1,
+
+        "content": node_text(node, code_bytes),
+
+        "calls": extract_method_calls(node, code_bytes),
+
+        "parameter_types": extract_parameter_types(node, code_bytes),
+
+        "assignments": extract_property_assignments(node, code_bytes),
+
+    }
+
+
+# ============================================================
 # Extract PHP Code Units
 # ============================================================
 
 def extract_php_units(code):
+    """
+    Split a PHP file into methods and functions.
 
-    tree = parser.parse(
-        code.encode("utf-8")
-    )
+    Files that contain no methods or functions (for example route
+    files and config arrays) are returned as a single "file" unit,
+    so they still end up in the vector database.
+    """
+
+    code_bytes = code.encode("utf-8")
+
+    tree = parser.parse(code_bytes)
 
     namespace = None
 
@@ -161,165 +203,78 @@ def extract_php_units(code):
 
             if namespace_node:
 
-                namespace = code[
-                    namespace_node.start_byte:
-                    namespace_node.end_byte
-                ]
+                namespace = node_text(namespace_node, code_bytes)
 
             break
 
-
     units = []
-
 
     # --------------------------------------------------------
     # Traverse AST
     # --------------------------------------------------------
 
-    def visit(node, current_class=None):
+    def visit(node, current_type=None):
 
-        # ====================================================
-        # Class
-        # ====================================================
+        # Class / Interface / Trait / Enum
+        if node.type in TYPE_DECLARATIONS:
 
-        if node.type == "class_declaration":
+            name_node = node.child_by_field_name("name")
 
-            class_name_node = node.child_by_field_name("name")
+            if name_node:
 
-            if class_name_node:
+                current_type = (
+                    node_text(name_node, code_bytes),
+                    TYPE_DECLARATIONS[node.type],
+                )
 
-                current_class = code[
-                    class_name_node.start_byte:
-                    class_name_node.end_byte
-                ]
+        elif node.type == "anonymous_class":
 
+            current_type = ("class@anonymous", "class")
 
-        # ====================================================
         # Method
-        # ====================================================
-
         if node.type == "method_declaration":
 
-            method_name_node = node.child_by_field_name("name")
+            if node.child_by_field_name("name"):
 
-            if method_name_node:
+                units.append(build_unit(
+                    node, code_bytes, namespace, current_type, "method"
+                ))
 
-                method_name = code[
-                    method_name_node.start_byte:
-                    method_name_node.end_byte
-                ]
-
-                method_code = code[
-                    node.start_byte:
-                    node.end_byte
-                ]
-
-                calls = extract_method_calls(
-                    node,
-                    code
-                )
-
-                parameter_types = extract_parameter_types(
-                    node,
-                    code
-                )
-
-                assignments = extract_property_assignments(
-                    node,
-                    code
-                )
-
-                units.append({
-
-                    "namespace": namespace,
-
-                    "class": current_class,
-
-                    "method": method_name,
-
-                    "type": "method",
-
-                    "abstract": "abstract" in method_code,
-
-                    "content": method_code,
-
-                    "calls": calls,
-
-                    "parameter_types": parameter_types,
-
-                    "assignments": assignments
-
-                })
-
-
-        # ====================================================
         # Standalone Function
-        # ====================================================
-
         elif node.type == "function_definition":
 
-            function_name_node = node.child_by_field_name("name")
+            if node.child_by_field_name("name"):
 
-            if function_name_node:
+                units.append(build_unit(
+                    node, code_bytes, namespace, None, "function"
+                ))
 
-                function_name = code[
-                    function_name_node.start_byte:
-                    function_name_node.end_byte
-                ]
-
-                function_code = code[
-                    node.start_byte:
-                    node.end_byte
-                ]
-
-                calls = extract_method_calls(
-                    node,
-                    code
-                )
-
-                parameter_types = extract_parameter_types(
-                    node,
-                    code
-                )
-
-                assignments = extract_property_assignments(
-                    node,
-                    code
-                )
-
-                units.append({
-
-                    "namespace": namespace,
-
-                    "class": None,
-
-                    "method": function_name,
-
-                    "type": "function",
-
-                    "content": function_code,
-
-                    "calls": calls,
-
-                    "parameter_types": parameter_types,
-
-                    "assignments": assignments
-
-                })
-
-
-        # ====================================================
         # Visit Children
-        # ====================================================
-
         for child in node.children:
 
-            visit(
-                child,
-                current_class
-            )
-
+            visit(child, current_type)
 
     visit(tree.root_node)
+
+    # --------------------------------------------------------
+    # Fallback: whole file (routes, config, bootstrap)
+    # --------------------------------------------------------
+
+    if not units and code.strip():
+
+        units.append({
+            "namespace": namespace,
+            "class": None,
+            "class_kind": None,
+            "method": None,
+            "type": "file",
+            "abstract": False,
+            "start_line": 1,
+            "end_line": code.count("\n") + 1,
+            "content": code,
+            "calls": extract_method_calls(tree.root_node, code_bytes),
+            "parameter_types": {},
+            "assignments": [],
+        })
 
     return units

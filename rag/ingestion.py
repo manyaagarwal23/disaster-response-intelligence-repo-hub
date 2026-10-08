@@ -1,334 +1,135 @@
-from pathlib import Path
+import sys
 
-from sentence_transformers import SentenceTransformer
-import chromadb
-
-from php_extractor import extract_php_units
+import config
+from chunking import build_embedding_text, build_metadata, collect_chunks
 
 
-# ============================================================
-# 1. Repository Configuration
-# ============================================================
-
-REPO_PATH = Path("../ushahidi")
-
-INCLUDE_DIRS = {
-    "src",
-    "app",
-    "config",
-    "routes",
-    "bootstrap",
-}
+BATCH_SIZE = 500
 
 
-# ============================================================
-# 2. Find PHP Source Files
-# ============================================================
+def main():
 
-php_files = []
+    # ============================================================
+    # 1. Repository Configuration
+    # ============================================================
 
-for file in REPO_PATH.rglob("*.php"):
+    repo_path = config.REPO_PATH
 
-    relative_path = file.relative_to(REPO_PATH)
+    if not repo_path.is_dir():
 
-    if relative_path.parts[0] in INCLUDE_DIRS:
+        print(f"Ushahidi repository not found at: {repo_path}")
+        print("Clone it first (pinned commit):")
+        print(f"  git clone {config.USHAHIDI_REPO_URL} {repo_path}")
+        print(f"  git -C {repo_path} checkout {config.USHAHIDI_COMMIT}")
+        print("or set USHAHIDI_PATH to its location.")
 
-        php_files.append(file)
+        sys.exit(1)
 
+    # ============================================================
+    # 2. Find Files and Extract Chunks
+    # ============================================================
 
-print("PHP files selected:", len(php_files))
+    php_files, doc_files, chunks = collect_chunks(
+        repo_path, config.INCLUDE_DIRS, config.DOC_DIRS
+    )
 
+    print("PHP files selected:", len(php_files))
+    print("Markdown docs selected:", len(doc_files))
+    print("Chunks extracted:", len(chunks))
 
-# ============================================================
-# 3. Read Source Files and Extract PHP Units
-# ============================================================
+    if not chunks:
 
-def read_source_file(file_path):
+        print("Nothing to index.")
 
-    try:
+        sys.exit(1)
 
-        return file_path.read_text(
-            encoding="utf-8"
+    # ============================================================
+    # 3. Prepare Text for Embeddings
+    # ============================================================
+
+    embedding_texts = [
+        build_embedding_text(chunk)
+        for chunk in chunks
+    ]
+
+    # ============================================================
+    # 4. Load Embedding Model and Create Embeddings
+    # ============================================================
+
+    # Heavy imports are done here so the module can be imported
+    # (e.g. by tests) without loading torch.
+    from sentence_transformers import SentenceTransformer
+    import chromadb
+
+    print("\nLoading embedding model...")
+
+    model = SentenceTransformer(config.EMBEDDING_MODEL)
+
+    print("\nCreating embeddings...")
+
+    all_embeddings = model.encode(
+        embedding_texts,
+        batch_size=32,
+        show_progress_bar=True,
+        normalize_embeddings=True,
+    )
+
+    # ============================================================
+    # 5. Rebuild ChromaDB Collection
+    # ============================================================
+    # The collection is always rebuilt, so re-running ingestion
+    # after the code or the extractor changes never leaves stale
+    # vectors behind.
+
+    client = chromadb.PersistentClient(path=str(config.CHROMA_PATH))
+
+    if config.COLLECTION_NAME in [
+        c if isinstance(c, str) else c.name
+        for c in client.list_collections()
+    ]:
+
+        client.delete_collection(config.COLLECTION_NAME)
+
+    collection = client.create_collection(
+        name=config.COLLECTION_NAME,
+        metadata={
+            "hnsw:space": "cosine",
+            "embedding_model": config.EMBEDDING_MODEL,
+            "ushahidi_commit": config.USHAHIDI_COMMIT,
+        },
+    )
+
+    # ============================================================
+    # 6. Store Embeddings in Batches
+    # ============================================================
+
+    for start in range(0, len(chunks), BATCH_SIZE):
+
+        end = start + BATCH_SIZE
+
+        collection.add(
+            ids=[str(i) for i in range(start, min(end, len(chunks)))],
+            embeddings=all_embeddings[start:end].tolist(),
+            documents=[chunk["content"] for chunk in chunks[start:end]],
+            metadatas=[build_metadata(chunk) for chunk in chunks[start:end]],
         )
 
-    except UnicodeDecodeError:
-
-        return file_path.read_text(
-            encoding="utf-8",
-            errors="ignore"
-        )
-
-
-units = []
-
-
-for file in php_files:
-
-    content = read_source_file(file)
-
-    extracted_units = extract_php_units(
-        content
-    )
-
-    relative_path = str(
-        file.relative_to(REPO_PATH)
-    )
-
-    for unit in extracted_units:
-
-        units.append({
-
-            "unit_id": len(units),
-
-            "source": relative_path,
-
-            "filename": file.name,
-
-            "namespace": unit["namespace"] or "",
-
-            "class": unit["class"] or "",
-
-            "method": unit["method"] or "",
-
-            "type": unit["type"],
-
-            "content": unit["content"],
-
-            "calls": unit["calls"],
-
-            "parameter_types": unit[
-                "parameter_types"
-            ],
-
-            "assignments": unit[
-                "assignments"
-            ]
-
-        })
-
-
-print(
-    "PHP units extracted:",
-    len(units)
-)
-
-
-# ============================================================
-# 4. Prepare Text for Embeddings
-# ============================================================
-
-embedding_texts = []
-
-
-for unit in units:
-
-    calls_text = " ".join(
-        f'{call["object"]} {call["method"]}'
-        for call in unit["calls"]
-    )
-
-    parameter_text = " ".join(
-        f'{name} {parameter_type}'
-        for name, parameter_type
-        in unit["parameter_types"].items()
-    )
-
-    assignment_text = " ".join(
-        f'{assignment["left"]} {assignment["right"]}'
-        for assignment in unit["assignments"]
-    )
-
-    text = f"""
-Namespace: {unit["namespace"]}
-Class: {unit["class"]}
-Method: {unit["method"]}
-Type: {unit["type"]}
-
-Calls:
-{calls_text}
-
-Parameter types:
-{parameter_text}
-
-Property assignments:
-{assignment_text}
-
-Code:
-{unit["content"]}
-"""
-
-    embedding_texts.append(
-        text.strip()
-    )
-
-
-print(
-    "Embedding texts prepared:",
-    len(embedding_texts)
-)
-
-
-# ============================================================
-# 5. Load Local Embedding Model
-# ============================================================
-
-print("\nLoading embedding model...")
-
-model = SentenceTransformer(
-    "BAAI/bge-base-en-v1.5"
-)
-
-
-# ============================================================
-# 6. Create Embeddings
-# ============================================================
-
-print("\nCreating embeddings...")
-
-all_embeddings = model.encode(
-    embedding_texts,
-    show_progress_bar=True
-)
-
-
-print("\nAll embeddings created")
-
-print(
-    "Number of embeddings:",
-    len(all_embeddings)
-)
-
-print(
-    "Embedding dimensions:",
-    len(all_embeddings[0])
-)
-
-
-# ============================================================
-# 7. Connect to ChromaDB
-# ============================================================
-
-client = chromadb.PersistentClient(
-    path="./chroma_db"
-)
-
-collection = client.get_or_create_collection(
-    name="ushahidi_code"
-)
-
-
-print("\nChromaDB collection ready")
-
-print(
-    "Collection:",
-    collection.name
-)
-
-
-# ============================================================
-# 8. Store Embeddings in ChromaDB
-# ============================================================
-
-if collection.count() == 0:
-
-    collection.add(
-
-        ids=[
-            str(unit["unit_id"])
-            for unit in units
-        ],
-
-        embeddings=all_embeddings.tolist(),
-
-        documents=[
-            unit["content"]
-            for unit in units
-        ],
-
-        metadatas=[
-
-            {
-                "source": unit["source"],
-
-                "filename": unit["filename"],
-
-                "namespace": unit["namespace"],
-
-                "class": unit["class"],
-
-                "method": unit["method"],
-
-                "type": unit["type"],
-
-                "calls": " | ".join(
-                    f'{call["object"]}->{call["method"]}'
-                    for call in unit["calls"]
-                ),
-
-                "parameter_types": " | ".join(
-                    f'{name}->{parameter_type}'
-                    for name, parameter_type
-                    in unit["parameter_types"].items()
-                ),
-
-                "assignments": " | ".join(
-                    f'{assignment["left"]}={assignment["right"]}'
-                    for assignment
-                    in unit["assignments"]
-                )
-
-            }
-
-            for unit in units
-
-        ]
-
-    )
-
-    print(
-        "\nPHP units stored in ChromaDB"
-    )
-
-else:
-
-    print(
-        "\nChromaDB already contains data"
-    )
-
-
-# ============================================================
-# 9. Final Information
-# ============================================================
-
-print("\n" + "-" * 50)
-
-print("INGESTION COMPLETE")
-
-print("-" * 50)
-
-print(
-    "PHP files:",
-    len(php_files)
-)
-
-print(
-    "Methods/functions:",
-    len(units)
-)
-
-print(
-    "Vectors:",
-    len(all_embeddings)
-)
-
-print(
-    "Vector dimensions:",
-    len(all_embeddings[0])
-)
-
-print(
-    "ChromaDB documents:",
-    collection.count()
-)
-
-print("-" * 50)
+    # ============================================================
+    # 7. Final Information
+    # ============================================================
+
+    print("\n" + "-" * 50)
+    print("INGESTION COMPLETE")
+    print("-" * 50)
+    print("PHP files:", len(php_files))
+    print("Markdown docs:", len(doc_files))
+    print("Chunks:", len(chunks))
+    print("Vector dimensions:", len(all_embeddings[0]))
+    print("ChromaDB documents:", collection.count())
+    print("Database path:", config.CHROMA_PATH)
+    print("-" * 50)
+
+
+if __name__ == "__main__":
+
+    main()

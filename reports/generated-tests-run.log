@@ -1,0 +1,14 @@
+- `php_extractor.py`: kept **8** of 8 generated tests -> `tests/generated/test_gen_php_extractor.py`
+- `chunking.py`: kept **5** of 6 generated tests -> `tests/generated/test_gen_chunking.py`
+- `retrieval.py`: kept **8** of 8 generated tests -> `tests/generated/test_gen_retrieval.py`
+LLM rate limit hit, waiting 65s (attempt 1/4)...
+- `llm.py`: kept **7** of 8 generated tests -> `tests/generated/test_gen_llm.py`
+LLM rate limit hit, waiting 65s (attempt 1/4)...
+- `generator.py`: kept **7** of 7 generated tests -> `tests/generated/test_gen_generator.py`
+LLM rate limit hit, waiting 65s (attempt 1/4)...
+LLM rate limit hit, waiting 65s (attempt 1/4)...
+- `evaluate.py`: kept **7** of 7 generated tests -> `tests/generated/test_gen_evaluate.py`
+- `rag_api.py`: kept **6** of 6 generated tests -> `tests/generated/test_gen_rag_api.py`
+
+Report written to /home/vboxuser/disaster-response-intelligence-repo-hub/reports/generated-tests-2026-10-07.md
+exit 0

@@ -1,0 +1,32 @@
+== compose smoke test started 2026-10-07 10:47:26 on port 8001
+== commit: dd60343
+
+== docker compose up  -d
+ Network drihsmoke_default  Creating
+ Network drihsmoke_default  Created
+ Volume drihsmoke_rag-data  Creating
+ Volume drihsmoke_rag-data  Created
+ Container drihsmoke-rag-1  Creating
+ Container drihsmoke-rag-1  Created
+ Container drihsmoke-rag-1  Starting
+ Container drihsmoke-rag-1  Started
+
+== waiting for the vector database (first start fetches Ushahidi + builds it)
+database ready after 45 min 45 s
+
+== container log (ingestion summary)
+Fetching Ushahidi 78f81b4be6c9aa7cc0a49d6b9d53cf744f45d382 into /data/ushahidi ...
+Building vector database (first start only) ...
+INGESTION COMPLETE
+Chunks: 5698
+ChromaDB documents: 5698
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+
+== asking a question
+question: Where is an incoming SMS report parsed?
+answered in 21.2 s
+llm_used: True | warning: None | error: None
+diagram: True | sources: ['SMSSyncController.php:53', 'SislogController.php:49', 'SMSSyncController.php:23']
+RESULT: PASS
+
+== cleanup (11:33:33)

@@ -1,0 +1,15 @@
+PHP files selected: 1417
+Markdown docs selected: 92
+Chunks extracted: 5698
+Loading embedding model...
+Creating embeddings...
+--------------------------------------------------
+INGESTION COMPLETE
+--------------------------------------------------
+PHP files: 1417
+Markdown docs: 92
+Chunks: 5698
+Vector dimensions: 768
+ChromaDB documents: 5698
+Database path: /data/chroma_db
+--------------------------------------------------

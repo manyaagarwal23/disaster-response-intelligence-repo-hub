@@ -1,0 +1,758 @@
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon  7.245MB
+Step 1/16 : FROM python:3.11-slim
+ ---> 0dd364ba7e10
+Step 2/16 : ENV PYTHONUNBUFFERED=1     PIP_NO_CACHE_DIR=1     PIP_DISABLE_PIP_VERSION_CHECK=1     HF_HOME=/opt/huggingface     CHROMA_PATH=/data/chroma_db     USHAHIDI_PATH=/data/ushahidi     ANONYMIZED_TELEMETRY=False
+ ---> Running in 8ea7fab8b7de
+ ---> Removed intermediate container 8ea7fab8b7de
+ ---> 08d03cd802a0
+Step 3/16 : RUN apt-get update     && apt-get install -y --no-install-recommends git ca-certificates     && rm -rf /var/lib/apt/lists/*
+ ---> Running in 3b490d77290b
+Hit:1 http://deb.debian.org/debian trixie InRelease
+Get:2 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
+Err:2 http://deb.debian.org/debian trixie-updates InRelease
+  Sub-process /usr/bin/sqv returned an error code (1), error message is: Verifying signature:            Not live until 2026-10-08T01:44:43Z Verifying signature:            Not live until 2026-10-08T01:45:03Z
+Get:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
+Err:3 http://deb.debian.org/debian-security trixie-security InRelease
+  Sub-process /usr/bin/sqv returned an error code (1), error message is: Verifying signature:            Not live until 2026-10-07T23:32:48Z Verifying signature:            Not live until 2026-10-07T23:32:48Z
+Get:4 http://deb.debian.org/debian trixie/main arm64 Packages [9614 kB]
+Fetched 9705 kB in 1s (6477 kB/s)
+Reading package lists...
+[91mW: An error occurred during the signature verification. The repository is not updated and the previous index files will be used. OpenPGP signature verification failed: http://deb.debian.org/debian trixie-updates InRelease: Sub-process /usr/bin/sqv returned an error code (1), error message is: Verifying signature:            Not live until 2026-10-08T01:44:43Z Verifying signature:            Not live until 2026-10-08T01:45:03Z
+W: An error occurred during the signature verification. The repository is not updated and the previous index files will be used. OpenPGP signature verification failed: http://deb.debian.org/debian-security trixie-security InRelease: Sub-process /usr/bin/sqv returned an error code (1), error message is: Verifying signature:            Not live until 2026-10-07T23:32:48Z Verifying signature:            Not live until 2026-10-07T23:32:48Z
+W: Failed to fetch http://deb.debian.org/debian/dists/trixie-updates/InRelease  Sub-process /usr/bin/sqv returned an error code (1), error message is: Verifying signature:            Not live until 2026-10-08T01:44:43Z Verifying signature:            Not live until 2026-10-08T01:45:03Z
+W: Failed to fetch http://deb.debian.org/debian-security/dists/trixie-security/InRelease  Sub-process /usr/bin/sqv returned an error code (1), error message is: Verifying signature:            Not live until 2026-10-07T23:32:48Z Verifying signature:            Not live until 2026-10-07T23:32:48Z
+W: Some index files failed to download. They have been ignored, or old ones used instead.
+[0mReading package lists...
+Building dependency tree...
+Reading state information...
+ca-certificates is already the newest version (20250419).
+The following additional packages will be installed:
+  git-man libbrotli1 libcom-err2 libcurl3t64-gnutls liberror-perl libexpat1
+  libgdbm-compat4t64 libgnutls30t64 libgssapi-krb5-2 libidn2-0 libk5crypto3
+  libkeyutils1 libkrb5-3 libkrb5support0 libldap2 libnghttp2-14 libnghttp3-9
+  libngtcp2-16 libngtcp2-crypto-gnutls8 libp11-kit0 libperl5.40 libpsl5t64
+  librtmp1 libsasl2-2 libsasl2-modules-db libssh2-1t64 libtasn1-6
+  libunistring5 perl perl-modules-5.40
+Suggested packages:
+  gettext-base git-doc git-email git-gui gitk gitweb git-cvs git-mediawiki
+  git-svn gnutls-bin krb5-doc krb5-user sensible-utils perl-doc
+  libterm-readline-gnu-perl | libterm-readline-perl-perl make
+  libtap-harness-archive-perl
+Recommended packages:
+  patch less ssh-client krb5-locales libldap-common publicsuffix
+  libsasl2-modules
+The following NEW packages will be installed:
+  git git-man libbrotli1 libcom-err2 libcurl3t64-gnutls liberror-perl
+  libexpat1 libgdbm-compat4t64 libgnutls30t64 libgssapi-krb5-2 libidn2-0
+  libk5crypto3 libkeyutils1 libkrb5-3 libkrb5support0 libldap2 libnghttp2-14
+  libnghttp3-9 libngtcp2-16 libngtcp2-crypto-gnutls8 libp11-kit0 libperl5.40
+  libpsl5t64 librtmp1 libsasl2-2 libsasl2-modules-db libssh2-1t64 libtasn1-6
+  libunistring5 perl perl-modules-5.40
+0 upgraded, 31 newly installed, 0 to remove and 0 not upgraded.
+Need to get 23.0 MB of archives.
+After this operation, 122 MB of additional disk space will be used.
+Get:1 http://deb.debian.org/debian trixie/main arm64 libexpat1 arm64 2.8.3-1~deb13u1 [109 kB]
+Get:2 http://deb.debian.org/debian trixie/main arm64 perl-modules-5.40 all 5.40.1-6+deb13u1 [3014 kB]
+Get:3 http://deb.debian.org/debian trixie/main arm64 libgdbm-compat4t64 arm64 1.24-2 [50.3 kB]
+Get:4 http://deb.debian.org/debian trixie/main arm64 libperl5.40 arm64 5.40.1-6+deb13u1 [4138 kB]
+Get:5 http://deb.debian.org/debian trixie/main arm64 perl arm64 5.40.1-6+deb13u1 [268 kB]
+Get:6 http://deb.debian.org/debian trixie/main arm64 libbrotli1 arm64 1.1.0-2+b7 [308 kB]
+Get:7 http://deb.debian.org/debian trixie/main arm64 libunistring5 arm64 1.3-2 [453 kB]
+Get:8 http://deb.debian.org/debian trixie/main arm64 libidn2-0 arm64 2.3.8-2 [107 kB]
+Get:9 http://deb.debian.org/debian trixie/main arm64 libp11-kit0 arm64 0.25.5-3 [409 kB]
+Get:10 http://deb.debian.org/debian trixie/main arm64 libtasn1-6 arm64 4.20.0-2+deb13u1 [47.3 kB]
+Get:11 http://deb.debian.org/debian trixie/main arm64 libgnutls30t64 arm64 3.8.9-3+deb13u4 [1379 kB]
+Get:12 http://deb.debian.org/debian trixie/main arm64 libkrb5support0 arm64 1.21.3-5+deb13u1 [32.5 kB]
+Get:13 http://deb.debian.org/debian trixie/main arm64 libcom-err2 arm64 1.47.2-3+b12 [24.9 kB]
+Get:14 http://deb.debian.org/debian trixie/main arm64 libk5crypto3 arm64 1.21.3-5+deb13u1 [81.4 kB]
+Get:15 http://deb.debian.org/debian trixie/main arm64 libkeyutils1 arm64 1.6.3-6 [9716 B]
+Get:16 http://deb.debian.org/debian trixie/main arm64 libkrb5-3 arm64 1.21.3-5+deb13u1 [308 kB]
+Get:17 http://deb.debian.org/debian trixie/main arm64 libgssapi-krb5-2 arm64 1.21.3-5+deb13u1 [128 kB]
+Get:18 http://deb.debian.org/debian trixie/main arm64 libsasl2-modules-db arm64 2.1.28+dfsg1-9 [20.1 kB]
+Get:19 http://deb.debian.org/debian trixie/main arm64 libsasl2-2 arm64 2.1.28+dfsg1-9 [55.6 kB]
+Get:20 http://deb.debian.org/debian trixie/main arm64 libldap2 arm64 2.6.10+dfsg-1 [179 kB]
+Get:21 http://deb.debian.org/debian trixie/main arm64 libnghttp2-14 arm64 1.64.0-1.1+deb13u1 [71.6 kB]
+Get:22 http://deb.debian.org/debian trixie/main arm64 libnghttp3-9 arm64 1.8.0-1 [63.2 kB]
+Get:23 http://deb.debian.org/debian trixie/main arm64 libngtcp2-16 arm64 1.11.0-1+deb13u1 [121 kB]
+Get:24 http://deb.debian.org/debian trixie/main arm64 libngtcp2-crypto-gnutls8 arm64 1.11.0-1+deb13u1 [28.4 kB]
+Get:25 http://deb.debian.org/debian trixie/main arm64 libpsl5t64 arm64 0.21.2-1.1+b1 [57.1 kB]
+Get:26 http://deb.debian.org/debian trixie/main arm64 librtmp1 arm64 2.4+20151223.gitfa8646d.1-2+b5 [56.8 kB]
+Get:27 http://deb.debian.org/debian trixie/main arm64 libssh2-1t64 arm64 1.11.1-1+deb13u2 [236 kB]
+Get:28 http://deb.debian.org/debian trixie/main arm64 libcurl3t64-gnutls arm64 8.14.1-2+deb13u5 [354 kB]
+Get:29 http://deb.debian.org/debian trixie/main arm64 liberror-perl all 0.17030-1 [26.9 kB]
+Get:30 http://deb.debian.org/debian trixie/main arm64 git-man all 1:2.47.3-0+deb13u1 [2205 kB]
+Get:31 http://deb.debian.org/debian trixie/main arm64 git arm64 1:2.47.3-0+deb13u1 [8666 kB]
+[91mdebconf: unable to initialize frontend: Dialog
+debconf: (TERM is not set, so the dialog frontend is not usable.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC entries checked: /etc/perl /usr/local/lib/aarch64-linux-gnu/perl/5.40.1 /usr/local/share/perl/5.40.1 /usr/lib/aarch64-linux-gnu/perl5/5.40 /usr/share/perl5 /usr/lib/aarch64-linux-gnu/perl-base /usr/lib/aarch64-linux-gnu/perl/5.40 /usr/share/perl/5.40 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 8, <STDIN> line 31.)
+debconf: falling back to frontend: Teletype
+[0m[91mdebconf: unable to initialize frontend: Teletype
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Noninteractive
+[0mFetched 23.0 MB in 2s (10.0 MB/s)
+Selecting previously unselected package libexpat1:arm64.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 5657 files and directories currently installed.)
+Preparing to unpack .../00-libexpat1_2.8.3-1~deb13u1_arm64.deb ...
+Unpacking libexpat1:arm64 (2.8.3-1~deb13u1) ...
+Selecting previously unselected package perl-modules-5.40.
+Preparing to unpack .../01-perl-modules-5.40_5.40.1-6+deb13u1_all.deb ...
+Unpacking perl-modules-5.40 (5.40.1-6+deb13u1) ...
+Selecting previously unselected package libgdbm-compat4t64:arm64.
+Preparing to unpack .../02-libgdbm-compat4t64_1.24-2_arm64.deb ...
+Unpacking libgdbm-compat4t64:arm64 (1.24-2) ...
+Selecting previously unselected package libperl5.40:arm64.
+Preparing to unpack .../03-libperl5.40_5.40.1-6+deb13u1_arm64.deb ...
+Unpacking libperl5.40:arm64 (5.40.1-6+deb13u1) ...
+Selecting previously unselected package perl.
+Preparing to unpack .../04-perl_5.40.1-6+deb13u1_arm64.deb ...
+Unpacking perl (5.40.1-6+deb13u1) ...
+Selecting previously unselected package libbrotli1:arm64.
+Preparing to unpack .../05-libbrotli1_1.1.0-2+b7_arm64.deb ...
+Unpacking libbrotli1:arm64 (1.1.0-2+b7) ...
+Selecting previously unselected package libunistring5:arm64.
+Preparing to unpack .../06-libunistring5_1.3-2_arm64.deb ...
+Unpacking libunistring5:arm64 (1.3-2) ...
+Selecting previously unselected package libidn2-0:arm64.
+Preparing to unpack .../07-libidn2-0_2.3.8-2_arm64.deb ...
+Unpacking libidn2-0:arm64 (2.3.8-2) ...
+Selecting previously unselected package libp11-kit0:arm64.
+Preparing to unpack .../08-libp11-kit0_0.25.5-3_arm64.deb ...
+Unpacking libp11-kit0:arm64 (0.25.5-3) ...
+Selecting previously unselected package libtasn1-6:arm64.
+Preparing to unpack .../09-libtasn1-6_4.20.0-2+deb13u1_arm64.deb ...
+Unpacking libtasn1-6:arm64 (4.20.0-2+deb13u1) ...
+Selecting previously unselected package libgnutls30t64:arm64.
+Preparing to unpack .../10-libgnutls30t64_3.8.9-3+deb13u4_arm64.deb ...
+Unpacking libgnutls30t64:arm64 (3.8.9-3+deb13u4) ...
+Selecting previously unselected package libkrb5support0:arm64.
+Preparing to unpack .../11-libkrb5support0_1.21.3-5+deb13u1_arm64.deb ...
+Unpacking libkrb5support0:arm64 (1.21.3-5+deb13u1) ...
+Selecting previously unselected package libcom-err2:arm64.
+Preparing to unpack .../12-libcom-err2_1.47.2-3+b12_arm64.deb ...
+Unpacking libcom-err2:arm64 (1.47.2-3+b12) ...
+Selecting previously unselected package libk5crypto3:arm64.
+Preparing to unpack .../13-libk5crypto3_1.21.3-5+deb13u1_arm64.deb ...
+Unpacking libk5crypto3:arm64 (1.21.3-5+deb13u1) ...
+Selecting previously unselected package libkeyutils1:arm64.
+Preparing to unpack .../14-libkeyutils1_1.6.3-6_arm64.deb ...
+Unpacking libkeyutils1:arm64 (1.6.3-6) ...
+Selecting previously unselected package libkrb5-3:arm64.
+Preparing to unpack .../15-libkrb5-3_1.21.3-5+deb13u1_arm64.deb ...
+Unpacking libkrb5-3:arm64 (1.21.3-5+deb13u1) ...
+Selecting previously unselected package libgssapi-krb5-2:arm64.
+Preparing to unpack .../16-libgssapi-krb5-2_1.21.3-5+deb13u1_arm64.deb ...
+Unpacking libgssapi-krb5-2:arm64 (1.21.3-5+deb13u1) ...
+Selecting previously unselected package libsasl2-modules-db:arm64.
+Preparing to unpack .../17-libsasl2-modules-db_2.1.28+dfsg1-9_arm64.deb ...
+Unpacking libsasl2-modules-db:arm64 (2.1.28+dfsg1-9) ...
+Selecting previously unselected package libsasl2-2:arm64.
+Preparing to unpack .../18-libsasl2-2_2.1.28+dfsg1-9_arm64.deb ...
+Unpacking libsasl2-2:arm64 (2.1.28+dfsg1-9) ...
+Selecting previously unselected package libldap2:arm64.
+Preparing to unpack .../19-libldap2_2.6.10+dfsg-1_arm64.deb ...
+Unpacking libldap2:arm64 (2.6.10+dfsg-1) ...
+Selecting previously unselected package libnghttp2-14:arm64.
+Preparing to unpack .../20-libnghttp2-14_1.64.0-1.1+deb13u1_arm64.deb ...
+Unpacking libnghttp2-14:arm64 (1.64.0-1.1+deb13u1) ...
+Selecting previously unselected package libnghttp3-9:arm64.
+Preparing to unpack .../21-libnghttp3-9_1.8.0-1_arm64.deb ...
+Unpacking libnghttp3-9:arm64 (1.8.0-1) ...
+Selecting previously unselected package libngtcp2-16:arm64.
+Preparing to unpack .../22-libngtcp2-16_1.11.0-1+deb13u1_arm64.deb ...
+Unpacking libngtcp2-16:arm64 (1.11.0-1+deb13u1) ...
+Selecting previously unselected package libngtcp2-crypto-gnutls8:arm64.
+Preparing to unpack .../23-libngtcp2-crypto-gnutls8_1.11.0-1+deb13u1_arm64.deb ...
+Unpacking libngtcp2-crypto-gnutls8:arm64 (1.11.0-1+deb13u1) ...
+Selecting previously unselected package libpsl5t64:arm64.
+Preparing to unpack .../24-libpsl5t64_0.21.2-1.1+b1_arm64.deb ...
+Unpacking libpsl5t64:arm64 (0.21.2-1.1+b1) ...
+Selecting previously unselected package librtmp1:arm64.
+Preparing to unpack .../25-librtmp1_2.4+20151223.gitfa8646d.1-2+b5_arm64.deb ...
+Unpacking librtmp1:arm64 (2.4+20151223.gitfa8646d.1-2+b5) ...
+Selecting previously unselected package libssh2-1t64:arm64.
+Preparing to unpack .../26-libssh2-1t64_1.11.1-1+deb13u2_arm64.deb ...
+Unpacking libssh2-1t64:arm64 (1.11.1-1+deb13u2) ...
+Selecting previously unselected package libcurl3t64-gnutls:arm64.
+Preparing to unpack .../27-libcurl3t64-gnutls_8.14.1-2+deb13u5_arm64.deb ...
+Unpacking libcurl3t64-gnutls:arm64 (8.14.1-2+deb13u5) ...
+Selecting previously unselected package liberror-perl.
+Preparing to unpack .../28-liberror-perl_0.17030-1_all.deb ...
+Unpacking liberror-perl (0.17030-1) ...
+Selecting previously unselected package git-man.
+Preparing to unpack .../29-git-man_1%3a2.47.3-0+deb13u1_all.deb ...
+Unpacking git-man (1:2.47.3-0+deb13u1) ...
+Selecting previously unselected package git.
+Preparing to unpack .../30-git_1%3a2.47.3-0+deb13u1_arm64.deb ...
+Unpacking git (1:2.47.3-0+deb13u1) ...
+Setting up libexpat1:arm64 (2.8.3-1~deb13u1) ...
+Setting up libkeyutils1:arm64 (1.6.3-6) ...
+Setting up libgdbm-compat4t64:arm64 (1.24-2) ...
+Setting up libbrotli1:arm64 (1.1.0-2+b7) ...
+Setting up libnghttp2-14:arm64 (1.64.0-1.1+deb13u1) ...
+Setting up libcom-err2:arm64 (1.47.2-3+b12) ...
+Setting up libkrb5support0:arm64 (1.21.3-5+deb13u1) ...
+Setting up libsasl2-modules-db:arm64 (2.1.28+dfsg1-9) ...
+Setting up libp11-kit0:arm64 (0.25.5-3) ...
+Setting up libunistring5:arm64 (1.3-2) ...
+Setting up libk5crypto3:arm64 (1.21.3-5+deb13u1) ...
+Setting up libsasl2-2:arm64 (2.1.28+dfsg1-9) ...
+Setting up libnghttp3-9:arm64 (1.8.0-1) ...
+Setting up perl-modules-5.40 (5.40.1-6+deb13u1) ...
+Setting up libtasn1-6:arm64 (4.20.0-2+deb13u1) ...
+Setting up git-man (1:2.47.3-0+deb13u1) ...
+Setting up libngtcp2-16:arm64 (1.11.0-1+deb13u1) ...
+Setting up libkrb5-3:arm64 (1.21.3-5+deb13u1) ...
+Setting up libssh2-1t64:arm64 (1.11.1-1+deb13u2) ...
+Setting up libldap2:arm64 (2.6.10+dfsg-1) ...
+Setting up libidn2-0:arm64 (2.3.8-2) ...
+Setting up libperl5.40:arm64 (5.40.1-6+deb13u1) ...
+Setting up perl (5.40.1-6+deb13u1) ...
+Setting up libgssapi-krb5-2:arm64 (1.21.3-5+deb13u1) ...
+Setting up libgnutls30t64:arm64 (3.8.9-3+deb13u4) ...
+Setting up libpsl5t64:arm64 (0.21.2-1.1+b1) ...
+Setting up liberror-perl (0.17030-1) ...
+Setting up librtmp1:arm64 (2.4+20151223.gitfa8646d.1-2+b5) ...
+Setting up libngtcp2-crypto-gnutls8:arm64 (1.11.0-1+deb13u1) ...
+Setting up libcurl3t64-gnutls:arm64 (8.14.1-2+deb13u5) ...
+Setting up git (1:2.47.3-0+deb13u1) ...
+Processing triggers for libc-bin (2.41-12+deb13u4) ...
+ ---> Removed intermediate container 3b490d77290b
+ ---> 7a67982c2f46
+Step 4/16 : WORKDIR /app/rag
+ ---> Running in c38d75a17a09
+ ---> Removed intermediate container c38d75a17a09
+ ---> 3bdbb1f9870a
+Step 5/16 : COPY rag/requirements.txt rag/requirements-dev.txt ./
+ ---> 0726f7d6854a
+Step 6/16 : RUN pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu     && pip install -r requirements.txt     && pip install pytest==9.1.1 httpx==0.28.1
+ ---> Running in 59b9664af96a
+Looking in indexes: https://download.pytorch.org/whl/cpu
+Collecting torch==2.14.1
+  Downloading https://download-r2.pytorch.org/whl/cpu/torch-2.14.1%2Bcpu-cp311-cp311-manylinux_2_28_aarch64.whl.metadata (37 kB)
+Collecting filelock (from torch==2.14.1)
+  Downloading filelock-3.32.3-py3-none-any.whl.metadata (2.0 kB)
+Collecting typing-extensions>=4.10.0 (from torch==2.14.1)
+  Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+Requirement already satisfied: setuptools>=77.0.3 in /usr/local/lib/python3.11/site-packages (from torch==2.14.1) (79.0.1)
+Collecting sympy>=1.13.3 (from torch==2.14.1)
+  Downloading sympy-1.14.0-py3-none-any.whl.metadata (12 kB)
+Collecting networkx>=2.5.1 (from torch==2.14.1)
+  Downloading networkx-3.6.1-py3-none-any.whl.metadata (6.8 kB)
+Collecting jinja2 (from torch==2.14.1)
+  Downloading https://download.pytorch.org/whl/jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting fsspec>=0.8.5 (from torch==2.14.1)
+  Downloading fsspec-2026.7.0-py3-none-any.whl.metadata (10 kB)
+Collecting mpmath<1.4,>=1.1.0 (from sympy>=1.13.3->torch==2.14.1)
+  Downloading mpmath-1.3.0-py3-none-any.whl.metadata (8.6 kB)
+Collecting MarkupSafe>=2.0 (from jinja2->torch==2.14.1)
+  Downloading https://download.pytorch.org/whl/markupsafe-3.0.3-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)
+Downloading https://download-r2.pytorch.org/whl/cpu/torch-2.14.1%2Bcpu-cp311-cp311-manylinux_2_28_aarch64.whl (159.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 159.2/159.2 MB 13.3 MB/s eta 0:00:00
+Downloading fsspec-2026.7.0-py3-none-any.whl (206 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 206.6/206.6 kB 8.5 MB/s eta 0:00:00
+Downloading networkx-3.6.1-py3-none-any.whl (2.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 13.6 MB/s eta 0:00:00
+Downloading sympy-1.14.0-py3-none-any.whl (6.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.3/6.3 MB 13.4 MB/s eta 0:00:00
+Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 45.6/45.6 kB 169.5 MB/s eta 0:00:00
+Downloading filelock-3.32.3-py3-none-any.whl (98 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 98.9/98.9 kB 25.5 MB/s eta 0:00:00
+Downloading https://download.pytorch.org/whl/jinja2-3.1.6-py3-none-any.whl (134 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.9/134.9 kB 72.5 MB/s eta 0:00:00
+Downloading https://download.pytorch.org/whl/markupsafe-3.0.3-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)
+Downloading mpmath-1.3.0-py3-none-any.whl (536 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 536.2/536.2 kB 13.7 MB/s eta 0:00:00
+Installing collected packages: mpmath, typing-extensions, sympy, networkx, MarkupSafe, fsspec, filelock, jinja2, torch
+Successfully installed MarkupSafe-3.0.3 filelock-3.32.3 fsspec-2026.7.0 jinja2-3.1.6 mpmath-1.3.0 networkx-3.6.1 sympy-1.14.0 torch-2.14.1+cpu typing-extensions-4.16.0
+[91mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+[0mCollecting chromadb==1.5.9 (from -r requirements.txt (line 8))
+  Downloading chromadb-1.5.9-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (5.0 kB)
+Collecting sentence-transformers==6.1.0 (from -r requirements.txt (line 9))
+  Downloading sentence_transformers-6.1.0-py3-none-any.whl.metadata (20 kB)
+Requirement already satisfied: torch==2.14.1 in /usr/local/lib/python3.11/site-packages (from -r requirements.txt (line 10)) (2.14.1+cpu)
+Collecting tree-sitter==0.26.0 (from -r requirements.txt (line 13))
+  Downloading tree_sitter-0.26.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (10 kB)
+Collecting tree-sitter-php==0.24.1 (from -r requirements.txt (line 14))
+  Downloading tree_sitter_php-0.24.1-cp310-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (1.7 kB)
+Collecting fastapi==0.142.2 (from -r requirements.txt (line 17))
+  Downloading fastapi-0.142.2-py3-none-any.whl.metadata (27 kB)
+Collecting uvicorn==0.54.0 (from -r requirements.txt (line 18))
+  Downloading uvicorn-0.54.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: jinja2==3.1.6 in /usr/local/lib/python3.11/site-packages (from -r requirements.txt (line 19)) (3.1.6)
+Collecting langchain-core==1.6.6 (from -r requirements.txt (line 22))
+  Downloading langchain_core-1.6.6-py3-none-any.whl.metadata (4.8 kB)
+Collecting langchain-groq==1.1.3 (from -r requirements.txt (line 23))
+  Downloading langchain_groq-1.1.3-py3-none-any.whl.metadata (2.9 kB)
+Collecting build>=1.0.3 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading build-1.6.1-py3-none-any.whl.metadata (5.6 kB)
+Collecting pydantic>=2.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading pydantic-2.13.5-py3-none-any.whl.metadata (110 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 110.2/110.2 kB 10.5 MB/s eta 0:00:00
+Collecting pydantic-settings>=2.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading pydantic_settings-2.15.0-py3-none-any.whl.metadata (3.9 kB)
+Collecting pybase64>=1.4.1 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading pybase64-1.5.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl.metadata (11 kB)
+Collecting numpy>=1.22.5 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading numpy-2.4.6-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl.metadata (6.6 kB)
+Requirement already satisfied: typing-extensions>=4.5.0 in /usr/local/lib/python3.11/site-packages (from chromadb==1.5.9->-r requirements.txt (line 8)) (4.16.0)
+Collecting onnxruntime>=1.14.1 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading onnxruntime-1.30.0-cp311-cp311-manylinux_2_28_aarch64.whl.metadata (5.7 kB)
+Collecting opentelemetry-api>=1.2.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading opentelemetry_api-1.45.1-py3-none-any.whl.metadata (1.4 kB)
+Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading opentelemetry_exporter_otlp_proto_grpc-1.45.1-py3-none-any.whl.metadata (2.6 kB)
+Collecting opentelemetry-sdk>=1.2.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading opentelemetry_sdk-1.45.1-py3-none-any.whl.metadata (1.6 kB)
+Collecting tokenizers>=0.13.2 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading tokenizers-0.23.2-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (9.8 kB)
+Collecting pypika>=0.48.9 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading pypika-0.51.1-py2.py3-none-any.whl.metadata (51 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 52.0/52.0 kB 41.7 MB/s eta 0:00:00
+Collecting tqdm>=4.65.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading tqdm-4.70.1-py3-none-any.whl.metadata (57 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 57.4/57.4 kB 20.6 MB/s eta 0:00:00
+Collecting overrides>=7.3.1 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading overrides-7.7.0-py3-none-any.whl.metadata (5.8 kB)
+Collecting importlib-resources (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading importlib_resources-7.1.0-py3-none-any.whl.metadata (4.0 kB)
+Collecting grpcio>=1.58.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading grpcio-1.84.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl.metadata (3.8 kB)
+Collecting bcrypt>=4.0.1 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading bcrypt-5.0.0-cp39-abi3-manylinux_2_34_aarch64.whl.metadata (10 kB)
+Collecting typer>=0.9.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading typer-0.27.3-py3-none-any.whl.metadata (16 kB)
+Collecting kubernetes>=28.1.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading kubernetes-37.0.0-py2.py3-none-any.whl.metadata (1.9 kB)
+Collecting tenacity>=8.2.3 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading tenacity-9.2.1-py3-none-any.whl.metadata (1.4 kB)
+Collecting pyyaml>=6.0.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading pyyaml-6.0.3-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.4 kB)
+Collecting mmh3>=4.0.1 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading mmh3-5.3.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (13 kB)
+Collecting orjson>=3.9.12 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading orjson-3.13.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (42 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 42.2/42.2 kB 368.8 MB/s eta 0:00:00
+Collecting httpx>=0.27.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Collecting rich>=10.11.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)
+Collecting jsonschema>=4.19.0 (from chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading jsonschema-4.26.0-py3-none-any.whl.metadata (7.6 kB)
+Collecting transformers<6.0.0,>=5.0.0 (from sentence-transformers==6.1.0->-r requirements.txt (line 9))
+  Downloading transformers-5.19.0-py3-none-any.whl.metadata (32 kB)
+Collecting huggingface-hub<2.0.0,>=1.3.0 (from sentence-transformers==6.1.0->-r requirements.txt (line 9))
+  Downloading huggingface_hub-1.33.0-py3-none-any.whl.metadata (16 kB)
+Collecting scikit-learn>=1.1.0 (from sentence-transformers==6.1.0->-r requirements.txt (line 9))
+  Downloading scikit_learn-1.9.1-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl.metadata (9.3 kB)
+Collecting scipy>=1.0.0 (from sentence-transformers==6.1.0->-r requirements.txt (line 9))
+  Downloading scipy-1.17.1-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl.metadata (62 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 62.1/62.1 kB 20.7 MB/s eta 0:00:00
+Requirement already satisfied: filelock in /usr/local/lib/python3.11/site-packages (from torch==2.14.1->-r requirements.txt (line 10)) (3.32.3)
+Requirement already satisfied: setuptools>=77.0.3 in /usr/local/lib/python3.11/site-packages (from torch==2.14.1->-r requirements.txt (line 10)) (79.0.1)
+Requirement already satisfied: sympy>=1.13.3 in /usr/local/lib/python3.11/site-packages (from torch==2.14.1->-r requirements.txt (line 10)) (1.14.0)
+Requirement already satisfied: networkx>=2.5.1 in /usr/local/lib/python3.11/site-packages (from torch==2.14.1->-r requirements.txt (line 10)) (3.6.1)
+Requirement already satisfied: fsspec>=0.8.5 in /usr/local/lib/python3.11/site-packages (from torch==2.14.1->-r requirements.txt (line 10)) (2026.7.0)
+Collecting starlette>=0.46.0 (from fastapi==0.142.2->-r requirements.txt (line 17))
+  Downloading starlette-1.7.0-py3-none-any.whl.metadata (6.6 kB)
+Collecting typing-inspection>=0.4.2 (from fastapi==0.142.2->-r requirements.txt (line 17))
+  Downloading typing_inspection-0.4.4-py3-none-any.whl.metadata (2.6 kB)
+Collecting annotated-doc>=0.0.2 (from fastapi==0.142.2->-r requirements.txt (line 17))
+  Downloading annotated_doc-0.0.5-py3-none-any.whl.metadata (6.5 kB)
+Collecting click>=7.0 (from uvicorn==0.54.0->-r requirements.txt (line 18))
+  Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)
+Collecting h11>=0.8 (from uvicorn==0.54.0->-r requirements.txt (line 18))
+  Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Requirement already satisfied: MarkupSafe>=2.0 in /usr/local/lib/python3.11/site-packages (from jinja2==3.1.6->-r requirements.txt (line 19)) (3.0.3)
+Collecting jsonpatch<2.0.0,>=1.33.0 (from langchain-core==1.6.6->-r requirements.txt (line 22))
+  Downloading jsonpatch-1.33-py2.py3-none-any.whl.metadata (3.0 kB)
+Collecting langchain-protocol>=0.0.17 (from langchain-core==1.6.6->-r requirements.txt (line 22))
+  Downloading langchain_protocol-0.0.19-py3-none-any.whl.metadata (2.4 kB)
+Collecting langsmith<1.0.0,>=0.3.45 (from langchain-core==1.6.6->-r requirements.txt (line 22))
+  Downloading langsmith-0.14.4-py3-none-any.whl.metadata (22 kB)
+Requirement already satisfied: packaging>=23.2.0 in /usr/local/lib/python3.11/site-packages (from langchain-core==1.6.6->-r requirements.txt (line 22)) (26.3)
+Collecting uuid-utils<1.0,>=0.12.0 (from langchain-core==1.6.6->-r requirements.txt (line 22))
+  Downloading uuid_utils-0.17.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (6.4 kB)
+Collecting groq<1.0.0,>=0.30.0 (from langchain-groq==1.1.3->-r requirements.txt (line 23))
+  Downloading groq-0.37.1-py3-none-any.whl.metadata (16 kB)
+Collecting pyproject_hooks (from build>=1.0.3->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading pyproject_hooks-1.3.3-py3-none-any.whl.metadata (1.3 kB)
+Collecting anyio<5,>=3.5.0 (from groq<1.0.0,>=0.30.0->langchain-groq==1.1.3->-r requirements.txt (line 23))
+  Downloading anyio-4.15.1-py3-none-any.whl.metadata (4.7 kB)
+Collecting distro<2,>=1.7.0 (from groq<1.0.0,>=0.30.0->langchain-groq==1.1.3->-r requirements.txt (line 23))
+  Downloading distro-1.9.0-py3-none-any.whl.metadata (6.8 kB)
+Collecting sniffio (from groq<1.0.0,>=0.30.0->langchain-groq==1.1.3->-r requirements.txt (line 23))
+  Downloading sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+Collecting certifi (from httpx>=0.27.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+Collecting httpcore==1.* (from httpx>=0.27.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Collecting idna (from httpx>=0.27.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+Collecting hf-xet<2.0.0,>=1.6.0 (from huggingface-hub<2.0.0,>=1.3.0->sentence-transformers==6.1.0->-r requirements.txt (line 9))
+  Downloading hf_xet-1.7.0-cp38-abi3-manylinux_2_28_aarch64.whl.metadata (4.9 kB)
+Collecting jsonpointer>=1.9 (from jsonpatch<2.0.0,>=1.33.0->langchain-core==1.6.6->-r requirements.txt (line 22))
+  Downloading jsonpointer-3.2.0-py3-none-any.whl.metadata (2.4 kB)
+Collecting attrs>=22.2.0 (from jsonschema>=4.19.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading attrs-26.1.0-py3-none-any.whl.metadata (8.8 kB)
+Collecting jsonschema-specifications>=2023.03.6 (from jsonschema>=4.19.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata (2.9 kB)
+Collecting referencing>=0.28.4 (from jsonschema>=4.19.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading referencing-0.37.0-py3-none-any.whl.metadata (2.8 kB)
+Collecting rpds-py>=0.25.0 (from jsonschema>=4.19.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading rpds_py-2026.9.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (4.1 kB)
+Collecting python-dateutil>=2.8.2 (from kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting websocket-client!=0.40.0,!=0.41.*,!=0.42.*,>=0.32.0 (from kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading websocket_client-1.9.2-py3-none-any.whl.metadata (8.3 kB)
+Collecting requests (from kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+Collecting requests-oauthlib (from kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading requests_oauthlib-2.0.0-py2.py3-none-any.whl.metadata (11 kB)
+Collecting urllib3<3.0.0,>=2.8.0 (from kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+Collecting durationpy>=0.11 (from kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading durationpy-0.11-py3-none-any.whl.metadata (474 bytes)
+Collecting aiohttp<4.0.0,>=3.14.3 (from kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading aiohttp-3.14.4-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (8.3 kB)
+Collecting aiohttp-retry>=2.9.1 (from kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading aiohttp_retry-2.9.1-py3-none-any.whl.metadata (8.8 kB)
+Collecting httpx2<3,>=2 (from langsmith<1.0.0,>=0.3.45->langchain-core==1.6.6->-r requirements.txt (line 22))
+  Downloading httpx2-2.13.1-py3-none-any.whl.metadata (9.8 kB)
+Collecting requests-toolbelt>=1.0.0 (from langsmith<1.0.0,>=0.3.45->langchain-core==1.6.6->-r requirements.txt (line 22))
+  Downloading requests_toolbelt-1.0.0-py2.py3-none-any.whl.metadata (14 kB)
+Collecting websockets>=15.0 (from langsmith<1.0.0,>=0.3.45->langchain-core==1.6.6->-r requirements.txt (line 22))
+  Downloading websockets-17.2-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (6.3 kB)
+Collecting xxhash>=3.0.0 (from langsmith<1.0.0,>=0.3.45->langchain-core==1.6.6->-r requirements.txt (line 22))
+  Downloading xxhash-4.0.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (17 kB)
+Collecting zstandard>=0.23.0 (from langsmith<1.0.0,>=0.3.45->langchain-core==1.6.6->-r requirements.txt (line 22))
+  Downloading zstandard-0.25.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl.metadata (3.3 kB)
+Collecting flatbuffers (from onnxruntime>=1.14.1->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading flatbuffers-25.12.19-py2.py3-none-any.whl.metadata (1.0 kB)
+Collecting protobuf>=4.25.8 (from onnxruntime>=1.14.1->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading protobuf-7.36.2-cp310-abi3-manylinux2014_aarch64.whl.metadata (595 bytes)
+Collecting googleapis-common-protos~=1.57 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading googleapis_common_protos-1.75.5-py3-none-any.whl.metadata (8.5 kB)
+Collecting opentelemetry-exporter-otlp-common==0.66b1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading opentelemetry_exporter_otlp_common-0.66b1-py3-none-any.whl.metadata (1.9 kB)
+Collecting opentelemetry-exporter-otlp-proto-common==1.45.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading opentelemetry_exporter_otlp_proto_common-1.45.1-py3-none-any.whl.metadata (1.8 kB)
+Collecting opentelemetry-proto==1.45.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading opentelemetry_proto-1.45.1-py3-none-any.whl.metadata (2.3 kB)
+Collecting opentelemetry-semantic-conventions==0.66b1 (from opentelemetry-sdk>=1.2.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading opentelemetry_semantic_conventions-0.66b1-py3-none-any.whl.metadata (2.4 kB)
+Collecting annotated-types>=0.6.0 (from pydantic>=2.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+Collecting pydantic-core==2.46.5 (from pydantic>=2.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading pydantic_core-2.46.5-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (6.6 kB)
+Collecting python-dotenv>=0.21.0 (from pydantic-settings>=2.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading python_dotenv-1.2.4-py3-none-any.whl.metadata (29 kB)
+Collecting markdown-it-py>=2.2.0 (from rich>=10.11.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading markdown_it_py-4.2.0-py3-none-any.whl.metadata (7.4 kB)
+Collecting pygments<3.0.0,>=2.13.0 (from rich>=10.11.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+Collecting joblib>=1.4.0 (from scikit-learn>=1.1.0->sentence-transformers==6.1.0->-r requirements.txt (line 9))
+  Downloading joblib-1.6.0-py3-none-any.whl.metadata (6.5 kB)
+Collecting narwhals>=2.0.1 (from scikit-learn>=1.1.0->sentence-transformers==6.1.0->-r requirements.txt (line 9))
+  Downloading narwhals-2.26.0-py3-none-any.whl.metadata (15 kB)
+Collecting threadpoolctl>=3.5.0 (from scikit-learn>=1.1.0->sentence-transformers==6.1.0->-r requirements.txt (line 9))
+  Downloading threadpoolctl-3.7.0-py3-none-any.whl.metadata (24 kB)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /usr/local/lib/python3.11/site-packages (from sympy>=1.13.3->torch==2.14.1->-r requirements.txt (line 10)) (1.3.0)
+Collecting regex>=2025.10.22 (from transformers<6.0.0,>=5.0.0->sentence-transformers==6.1.0->-r requirements.txt (line 9))
+  Downloading regex-2026.9.29-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (40 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 40.6/40.6 kB 516.4 MB/s eta 0:00:00
+Collecting safetensors>=0.8.0 (from transformers<6.0.0,>=5.0.0->sentence-transformers==6.1.0->-r requirements.txt (line 9))
+  Downloading safetensors-0.8.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (4.2 kB)
+Collecting shellingham>=1.3.0 (from typer>=0.9.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+Collecting httptools>=0.8.0 (from uvicorn[standard]>=0.18.3->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading httptools-0.8.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (3.5 kB)
+Collecting uvloop>=0.15.1 (from uvicorn[standard]>=0.18.3->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading uvloop-0.23.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (5.1 kB)
+Collecting watchfiles>=0.20 (from uvicorn[standard]>=0.18.3->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading watchfiles-1.3.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (4.9 kB)
+Collecting aiohappyeyeballs>=2.5.0 (from aiohttp<4.0.0,>=3.14.3->kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading aiohappyeyeballs-2.7.1-py3-none-any.whl.metadata (5.9 kB)
+Collecting aiosignal>=1.4.0 (from aiohttp<4.0.0,>=3.14.3->kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading aiosignal-1.4.0-py3-none-any.whl.metadata (3.7 kB)
+Collecting frozenlist>=1.1.1 (from aiohttp<4.0.0,>=3.14.3->kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading frozenlist-1.8.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (20 kB)
+Collecting multidict<7.0,>=4.5 (from aiohttp<4.0.0,>=3.14.3->kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading multidict-6.9.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (5.3 kB)
+Collecting propcache>=0.2.0 (from aiohttp<4.0.0,>=3.14.3->kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading propcache-0.5.4-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (25 kB)
+Collecting yarl<2.0,>=1.25.1 (from aiohttp<4.0.0,>=3.14.3->kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading yarl-1.25.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (111 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 111.6/111.6 kB 15.7 MB/s eta 0:00:00
+Collecting httpcore2==2.13.1 (from httpx2<3,>=2->langsmith<1.0.0,>=0.3.45->langchain-core==1.6.6->-r requirements.txt (line 22))
+  Downloading httpcore2-2.13.1-py3-none-any.whl.metadata (26 kB)
+Collecting truststore>=0.10 (from httpx2<3,>=2->langsmith<1.0.0,>=0.3.45->langchain-core==1.6.6->-r requirements.txt (line 22))
+  Downloading truststore-0.10.4-py3-none-any.whl.metadata (4.4 kB)
+Collecting cloudpickle>=3.0 (from joblib>=1.4.0->scikit-learn>=1.1.0->sentence-transformers==6.1.0->-r requirements.txt (line 9))
+  Downloading cloudpickle-3.1.2-py3-none-any.whl.metadata (7.1 kB)
+Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=10.11.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+Collecting six>=1.5 (from python-dateutil>=2.8.2->kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Collecting charset_normalizer<4,>=2 (from requests->kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading charset_normalizer-3.5.2-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (46 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 46.4/46.4 kB 197.2 MB/s eta 0:00:00
+Collecting oauthlib>=3.0.0 (from requests-oauthlib->kubernetes>=28.1.0->chromadb==1.5.9->-r requirements.txt (line 8))
+  Downloading oauthlib-4.0.0-py3-none-any.whl.metadata (8.6 kB)
+Downloading chromadb-1.5.9-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (22.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 22.7/22.7 MB 13.2 MB/s eta 0:00:00
+Downloading sentence_transformers-6.1.0-py3-none-any.whl (740 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 740.6/740.6 kB 13.6 MB/s eta 0:00:00
+Downloading tree_sitter-0.26.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (637 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 637.2/637.2 kB 13.9 MB/s eta 0:00:00
+Downloading tree_sitter_php-0.24.1-cp310-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (325 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 325.4/325.4 kB 15.4 MB/s eta 0:00:00
+Downloading fastapi-0.142.2-py3-none-any.whl (144 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 144.4/144.4 kB 15.9 MB/s eta 0:00:00
+Downloading uvicorn-0.54.0-py3-none-any.whl (87 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 87.4/87.4 kB 17.2 MB/s eta 0:00:00
+Downloading langchain_core-1.6.6-py3-none-any.whl (572 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 572.1/572.1 kB 14.5 MB/s eta 0:00:00
+Downloading langchain_groq-1.1.3-py3-none-any.whl (20 kB)
+Downloading annotated_doc-0.0.5-py3-none-any.whl (5.3 kB)
+Downloading bcrypt-5.0.0-cp39-abi3-manylinux_2_34_aarch64.whl (275 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 275.7/275.7 kB 14.9 MB/s eta 0:00:00
+Downloading build-1.6.1-py3-none-any.whl (31 kB)
+Downloading click-8.5.0-py3-none-any.whl (125 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 125.3/125.3 kB 21.6 MB/s eta 0:00:00
+Downloading groq-0.37.1-py3-none-any.whl (137 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 137.5/137.5 kB 22.5 MB/s eta 0:00:00
+Downloading grpcio-1.84.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl (7.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.0/7.0 MB 13.5 MB/s eta 0:00:00
+Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 73.5/73.5 kB 12.4 MB/s eta 0:00:00
+Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 78.8/78.8 kB 22.2 MB/s eta 0:00:00
+Downloading huggingface_hub-1.33.0-py3-none-any.whl (846 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 846.4/846.4 kB 16.2 MB/s eta 0:00:00
+Downloading jsonpatch-1.33-py2.py3-none-any.whl (12 kB)
+Downloading jsonschema-4.26.0-py3-none-any.whl (90 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 90.6/90.6 kB 15.7 MB/s eta 0:00:00
+Downloading kubernetes-37.0.0-py2.py3-none-any.whl (7.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.5/7.5 MB 13.3 MB/s eta 0:00:00
+Downloading langchain_protocol-0.0.19-py3-none-any.whl (7.3 kB)
+Downloading langsmith-0.14.4-py3-none-any.whl (813 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 813.1/813.1 kB 13.8 MB/s eta 0:00:00
+Downloading mmh3-5.3.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (105 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 105.9/105.9 kB 16.6 MB/s eta 0:00:00
+Downloading numpy-2.4.6-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl (16.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.0/16.0 MB 13.3 MB/s eta 0:00:00
+Downloading onnxruntime-1.30.0-cp311-cp311-manylinux_2_28_aarch64.whl (21.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 21.3/21.3 MB 13.3 MB/s eta 0:00:00
+Downloading opentelemetry_api-1.45.1-py3-none-any.whl (60 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.3/60.3 kB 24.1 MB/s eta 0:00:00
+Downloading opentelemetry_exporter_otlp_proto_grpc-1.45.1-py3-none-any.whl (19 kB)
+Downloading opentelemetry_exporter_otlp_common-0.66b1-py3-none-any.whl (12 kB)
+Downloading opentelemetry_exporter_otlp_proto_common-1.45.1-py3-none-any.whl (15 kB)
+Downloading opentelemetry_proto-1.45.1-py3-none-any.whl (72 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 72.5/72.5 kB 276.3 MB/s eta 0:00:00
+Downloading opentelemetry_sdk-1.45.1-py3-none-any.whl (140 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 140.1/140.1 kB 171.3 MB/s eta 0:00:00
+Downloading opentelemetry_semantic_conventions-0.66b1-py3-none-any.whl (206 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 206.3/206.3 kB 13.4 MB/s eta 0:00:00
+Downloading orjson-3.13.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (129 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 129.1/129.1 kB 38.5 MB/s eta 0:00:00
+Downloading overrides-7.7.0-py3-none-any.whl (17 kB)
+Downloading pybase64-1.5.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl (83 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 83.8/83.8 kB 11.1 MB/s eta 0:00:00
+Downloading pydantic-2.13.5-py3-none-any.whl (472 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 472.6/472.6 kB 13.9 MB/s eta 0:00:00
+Downloading pydantic_core-2.46.5-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (1.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.9/1.9 MB 13.6 MB/s eta 0:00:00
+Downloading pydantic_settings-2.15.0-py3-none-any.whl (69 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 69.4/69.4 kB 17.0 MB/s eta 0:00:00
+Downloading pypika-0.51.1-py2.py3-none-any.whl (60 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.6/60.6 kB 15.0 MB/s eta 0:00:00
+Downloading pyyaml-6.0.3-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (775 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 775.6/775.6 kB 13.5 MB/s eta 0:00:00
+Downloading rich-15.0.0-py3-none-any.whl (310 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 310.7/310.7 kB 13.4 MB/s eta 0:00:00
+Downloading scikit_learn-1.9.1-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl (9.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 9.0/9.0 MB 13.3 MB/s eta 0:00:00
+Downloading scipy-1.17.1-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl (33.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 33.1/33.1 MB 12.9 MB/s eta 0:00:00
+Downloading starlette-1.7.0-py3-none-any.whl (78 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 79.0/79.0 kB 14.3 MB/s eta 0:00:00
+Downloading tenacity-9.2.1-py3-none-any.whl (32 kB)
+Downloading tokenizers-0.23.2-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (3.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.5/3.5 MB 8.6 MB/s eta 0:00:00
+Downloading tqdm-4.70.1-py3-none-any.whl (80 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 80.2/80.2 kB 22.1 MB/s eta 0:00:00
+Downloading transformers-5.19.0-py3-none-any.whl (12.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.6/12.6 MB 13.3 MB/s eta 0:00:00
+Downloading typer-0.27.3-py3-none-any.whl (123 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 123.3/123.3 kB 14.1 MB/s eta 0:00:00
+Downloading typing_inspection-0.4.4-py3-none-any.whl (14 kB)
+Downloading uuid_utils-0.17.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (325 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 325.3/325.3 kB 13.9 MB/s eta 0:00:00
+Downloading importlib_resources-7.1.0-py3-none-any.whl (37 kB)
+Downloading aiohttp-3.14.4-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (1.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.9/1.9 MB 13.6 MB/s eta 0:00:00
+Downloading aiohttp_retry-2.9.1-py3-none-any.whl (10.0 kB)
+Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+Downloading anyio-4.15.1-py3-none-any.whl (132 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.1/132.1 kB 13.2 MB/s eta 0:00:00
+Downloading attrs-26.1.0-py3-none-any.whl (67 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 67.5/67.5 kB 16.6 MB/s eta 0:00:00
+Downloading certifi-2026.7.22-py3-none-any.whl (136 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 137.0/137.0 kB 15.5 MB/s eta 0:00:00
+Downloading distro-1.9.0-py3-none-any.whl (20 kB)
+Downloading durationpy-0.11-py3-none-any.whl (4.1 kB)
+Downloading googleapis_common_protos-1.75.5-py3-none-any.whl (307 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 307.7/307.7 kB 14.8 MB/s eta 0:00:00
+Downloading hf_xet-1.7.0-cp38-abi3-manylinux_2_28_aarch64.whl (4.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.0/4.0 MB 13.3 MB/s eta 0:00:00
+Downloading httptools-0.8.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (464 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 464.2/464.2 kB 13.9 MB/s eta 0:00:00
+Downloading httpx2-2.13.1-py3-none-any.whl (95 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 95.6/95.6 kB 25.4 MB/s eta 0:00:00
+Downloading httpcore2-2.13.1-py3-none-any.whl (83 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 83.4/83.4 kB 12.0 MB/s eta 0:00:00
+Downloading idna-3.20-py3-none-any.whl (69 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 69.6/69.6 kB 13.8 MB/s eta 0:00:00
+Downloading joblib-1.6.0-py3-none-any.whl (306 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 306.1/306.1 kB 14.6 MB/s eta 0:00:00
+Downloading jsonpointer-3.2.0-py3-none-any.whl (8.2 kB)
+Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+Downloading markdown_it_py-4.2.0-py3-none-any.whl (91 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 91.7/91.7 kB 14.9 MB/s eta 0:00:00
+Downloading narwhals-2.26.0-py3-none-any.whl (474 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 474.0/474.0 kB 14.5 MB/s eta 0:00:00
+Downloading protobuf-7.36.2-cp310-abi3-manylinux2014_aarch64.whl (344 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 344.2/344.2 kB 14.4 MB/s eta 0:00:00
+Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 13.4 MB/s eta 0:00:00
+Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 229.9/229.9 kB 14.1 MB/s eta 0:00:00
+Downloading python_dotenv-1.2.4-py3-none-any.whl (23 kB)
+Downloading referencing-0.37.0-py3-none-any.whl (26 kB)
+Downloading regex-2026.9.29-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (799 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 799.5/799.5 kB 13.6 MB/s eta 0:00:00
+Downloading requests-2.34.2-py3-none-any.whl (73 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 73.1/73.1 kB 16.1 MB/s eta 0:00:00
+Downloading requests_toolbelt-1.0.0-py2.py3-none-any.whl (54 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 54.5/54.5 kB 20.8 MB/s eta 0:00:00
+Downloading rpds_py-2026.9.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (377 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 377.8/377.8 kB 11.2 MB/s eta 0:00:00
+Downloading safetensors-0.8.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (502 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 502.8/502.8 kB 16.8 MB/s eta 0:00:00
+Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+Downloading sniffio-1.3.1-py3-none-any.whl (10 kB)
+Downloading threadpoolctl-3.7.0-py3-none-any.whl (26 kB)
+Downloading urllib3-2.8.0-py3-none-any.whl (135 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.7/135.7 kB 14.0 MB/s eta 0:00:00
+Downloading uvloop-0.23.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (3.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.9/3.9 MB 13.4 MB/s eta 0:00:00
+Downloading watchfiles-1.3.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (454 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 455.0/455.0 kB 14.7 MB/s eta 0:00:00
+Downloading websocket_client-1.9.2-py3-none-any.whl (95 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 95.8/95.8 kB 17.8 MB/s eta 0:00:00
+Downloading websockets-17.2-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (226 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 226.3/226.3 kB 11.5 MB/s eta 0:00:00
+Downloading xxhash-4.0.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (276 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 276.5/276.5 kB 18.2 MB/s eta 0:00:00
+Downloading zstandard-0.25.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl (5.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.1/5.1 MB 13.4 MB/s eta 0:00:00
+Downloading flatbuffers-25.12.19-py2.py3-none-any.whl (26 kB)
+Downloading pyproject_hooks-1.3.3-py3-none-any.whl (10 kB)
+Downloading requests_oauthlib-2.0.0-py2.py3-none-any.whl (24 kB)
+Downloading aiohappyeyeballs-2.7.1-py3-none-any.whl (15 kB)
+Downloading aiosignal-1.4.0-py3-none-any.whl (7.5 kB)
+Downloading charset_normalizer-3.5.2-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (259 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 259.3/259.3 kB 13.9 MB/s eta 0:00:00
+Downloading cloudpickle-3.1.2-py3-none-any.whl (22 kB)
+Downloading frozenlist-1.8.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (233 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 233.2/233.2 kB 14.9 MB/s eta 0:00:00
+Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+Downloading multidict-6.9.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (315 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 315.5/315.5 kB 13.5 MB/s eta 0:00:00
+Downloading oauthlib-4.0.0-py3-none-any.whl (159 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 159.7/159.7 kB 13.9 MB/s eta 0:00:00
+Downloading propcache-0.5.4-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (238 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 238.7/238.7 kB 14.9 MB/s eta 0:00:00
+Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+Downloading truststore-0.10.4-py3-none-any.whl (18 kB)
+Downloading yarl-1.25.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (116 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 116.4/116.4 kB 23.1 MB/s eta 0:00:00
+Installing collected packages: pypika, flatbuffers, durationpy, zstandard, xxhash, websockets, websocket-client, uvloop, uuid-utils, urllib3, typing-inspection, truststore, tree-sitter-php, tree-sitter, tqdm, threadpoolctl, tenacity, sniffio, six, shellingham, safetensors, rpds-py, regex, pyyaml, python-dotenv, pyproject_hooks, pygments, pydantic-core, pybase64, protobuf, propcache, overrides, orjson, opentelemetry-api, oauthlib, numpy, narwhals, multidict, mmh3, mdurl, langchain-protocol, jsonpointer, importlib-resources, idna, httptools, hf-xet, h11, grpcio, frozenlist, distro, cloudpickle, click, charset_normalizer, certifi, bcrypt, attrs, annotated-types, annotated-doc, aiohappyeyeballs, yarl, uvicorn, scipy, requests, referencing, python-dateutil, pydantic, opentelemetry-semantic-conventions, opentelemetry-proto, onnxruntime, markdown-it-py, jsonpatch, joblib, httpcore2, httpcore, googleapis-common-protos, build, anyio, aiosignal, watchfiles, starlette, scikit-learn, rich, requests-toolbelt, requests-oauthlib, pydantic-settings, opentelemetry-sdk, opentelemetry-exporter-otlp-proto-common, jsonschema-specifications, httpx2, httpx, aiohttp, typer, opentelemetry-exporter-otlp-common, langsmith, jsonschema, huggingface-hub, groq, fastapi, aiohttp-retry, tokenizers, opentelemetry-exporter-otlp-proto-grpc, langchain-core, kubernetes, transformers, langchain-groq, chromadb, sentence-transformers
+[91mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+[0mSuccessfully installed aiohappyeyeballs-2.7.1 aiohttp-3.14.4 aiohttp-retry-2.9.1 aiosignal-1.4.0 annotated-doc-0.0.5 annotated-types-0.8.0 anyio-4.15.1 attrs-26.1.0 bcrypt-5.0.0 build-1.6.1 certifi-2026.7.22 charset_normalizer-3.5.2 chromadb-1.5.9 click-8.5.0 cloudpickle-3.1.2 distro-1.9.0 durationpy-0.11 fastapi-0.142.2 flatbuffers-25.12.19 frozenlist-1.8.0 googleapis-common-protos-1.75.5 groq-0.37.1 grpcio-1.84.0 h11-0.16.0 hf-xet-1.7.0 httpcore-1.0.9 httpcore2-2.13.1 httptools-0.8.0 httpx-0.28.1 httpx2-2.13.1 huggingface-hub-1.33.0 idna-3.20 importlib-resources-7.1.0 joblib-1.6.0 jsonpatch-1.33 jsonpointer-3.2.0 jsonschema-4.26.0 jsonschema-specifications-2025.9.1 kubernetes-37.0.0 langchain-core-1.6.6 langchain-groq-1.1.3 langchain-protocol-0.0.19 langsmith-0.14.4 markdown-it-py-4.2.0 mdurl-0.1.2 mmh3-5.3.1 multidict-6.9.1 narwhals-2.26.0 numpy-2.4.6 oauthlib-4.0.0 onnxruntime-1.30.0 opentelemetry-api-1.45.1 opentelemetry-exporter-otlp-common-0.66b1 opentelemetry-exporter-otlp-proto-common-1.45.1 opentelemetry-exporter-otlp-proto-grpc-1.45.1 opentelemetry-proto-1.45.1 opentelemetry-sdk-1.45.1 opentelemetry-semantic-conventions-0.66b1 orjson-3.13.0 overrides-7.7.0 propcache-0.5.4 protobuf-7.36.2 pybase64-1.5.1 pydantic-2.13.5 pydantic-core-2.46.5 pydantic-settings-2.15.0 pygments-2.21.0 pypika-0.51.1 pyproject_hooks-1.3.3 python-dateutil-2.9.0.post0 python-dotenv-1.2.4 pyyaml-6.0.3 referencing-0.37.0 regex-2026.9.29 requests-2.34.2 requests-oauthlib-2.0.0 requests-toolbelt-1.0.0 rich-15.0.0 rpds-py-2026.9.1 safetensors-0.8.0 scikit-learn-1.9.1 scipy-1.17.1 sentence-transformers-6.1.0 shellingham-1.5.4 six-1.17.0 sniffio-1.3.1 starlette-1.7.0 tenacity-9.2.1 threadpoolctl-3.7.0 tokenizers-0.23.2 tqdm-4.70.1 transformers-5.19.0 tree-sitter-0.26.0 tree-sitter-php-0.24.1 truststore-0.10.4 typer-0.27.3 typing-inspection-0.4.4 urllib3-2.8.0 uuid-utils-0.17.1 uvicorn-0.54.0 uvloop-0.23.0 watchfiles-1.3.0 websocket-client-1.9.2 websockets-17.2 xxhash-4.0.1 yarl-1.25.1 zstandard-0.25.0
+Collecting pytest==9.1.1
+  Downloading pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+Requirement already satisfied: httpx==0.28.1 in /usr/local/lib/python3.11/site-packages (0.28.1)
+Collecting iniconfig>=1.0.1 (from pytest==9.1.1)
+  Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+Requirement already satisfied: packaging>=22 in /usr/local/lib/python3.11/site-packages (from pytest==9.1.1) (26.3)
+Collecting pluggy<2,>=1.5 (from pytest==9.1.1)
+  Downloading pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+Requirement already satisfied: pygments>=2.7.2 in /usr/local/lib/python3.11/site-packages (from pytest==9.1.1) (2.21.0)
+Requirement already satisfied: anyio in /usr/local/lib/python3.11/site-packages (from httpx==0.28.1) (4.15.1)
+Requirement already satisfied: certifi in /usr/local/lib/python3.11/site-packages (from httpx==0.28.1) (2026.7.22)
+Requirement already satisfied: httpcore==1.* in /usr/local/lib/python3.11/site-packages (from httpx==0.28.1) (1.0.9)
+Requirement already satisfied: idna in /usr/local/lib/python3.11/site-packages (from httpx==0.28.1) (3.20)
+Requirement already satisfied: h11>=0.16 in /usr/local/lib/python3.11/site-packages (from httpcore==1.*->httpx==0.28.1) (0.16.0)
+Requirement already satisfied: typing_extensions>=4.16.0 in /usr/local/lib/python3.11/site-packages (from anyio->httpx==0.28.1) (4.16.0)
+Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 386.5/386.5 kB 8.8 MB/s eta 0:00:00
+Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
+Installing collected packages: pluggy, iniconfig, pytest
+[91mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+[0mSuccessfully installed iniconfig-2.3.1 pluggy-1.6.0 pytest-9.1.1
+ ---> Removed intermediate container 59b9664af96a
+ ---> 7c522d9ea2b1
+Step 7/16 : RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-base-en-v1.5')"
+ ---> Running in ca2c1b9ae723
+[91mWarning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[0m[91mLoading weights:   0%|          | 0/199 [00:00<?, ?it/s][0m[91mLoading weights: 100%|██████████| 199/199 [00:00<00:00, 14004.24it/s]
+[0m ---> Removed intermediate container ca2c1b9ae723
+ ---> b9ba8f1e9151
+Step 8/16 : ENV HF_HUB_OFFLINE=1     TRANSFORMERS_OFFLINE=1
+ ---> Running in 92d4bc1d1986
+ ---> Removed intermediate container 92d4bc1d1986
+ ---> 3a32ce4862c9
+Step 9/16 : COPY rag/ ./
+ ---> 00755de284a6
+Step 10/16 : RUN useradd --create-home --uid 1000 app     && mkdir -p /data     && chown -R app:app /data /app     && chmod +x docker-entrypoint.sh
+ ---> Running in 6b26cae579d5
+ ---> Removed intermediate container 6b26cae579d5
+ ---> 3a33fd202967
+Step 11/16 : USER app
+ ---> Running in f0a57b34394a
+ ---> Removed intermediate container f0a57b34394a
+ ---> 212b95dce455
+Step 12/16 : VOLUME /data
+ ---> Running in add933ade11b
+ ---> Removed intermediate container add933ade11b
+ ---> e66e4800ced4
+Step 13/16 : EXPOSE 8000
+ ---> Running in a6f2399bd71d
+ ---> Removed intermediate container a6f2399bd71d
+ ---> 23bd67bff7ef
+Step 14/16 : HEALTHCHECK --interval=30s --timeout=5s --start-period=60m --retries=3     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"
+ ---> Running in c4840d6c7011
+ ---> Removed intermediate container c4840d6c7011
+ ---> e8d2a964719d
+Step 15/16 : ENTRYPOINT ["./docker-entrypoint.sh"]
+ ---> Running in 692de1a44e6f
+ ---> Removed intermediate container 692de1a44e6f
+ ---> 26c2208c89f1
+Step 16/16 : CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+ ---> Running in 1dd4b542ad01
+ ---> Removed intermediate container 1dd4b542ad01
+ ---> a7dd6ec2b1ac
+Successfully built a7dd6ec2b1ac
+Successfully tagged disaster-response-rag:latest
+exit 0

@@ -1,0 +1,10 @@
+Groq key 1 rejected (Error code: 401 - {'error': {'message': 'Invalid API Key', 'type': 'invalid_requ); skipping it from now on.
+Groq key 2 rejected (Error code: 401 - {'error': {'message': 'Invalid API Key', 'type': 'invalid_requ); skipping it from now on.
+All Groq keys exhausted; answering with local llama3.2:3b (slow).
+generation took 103s | provider: ollama:llama3.2:3b
+answer keys: ['diagram_code', 'diagram_type', 'simple', 'technical']
+summary: TSA withinphonhaus底 cold ColdColdWithinwithin Within within within within within within within within within within within within within within within within within within within within within within within within within within within within within within within within
+diagram present: False
+exit 0
+
+[exited with code 0]

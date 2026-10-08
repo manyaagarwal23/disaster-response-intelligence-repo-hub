@@ -1,0 +1,167 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Disaster Response Intelligence Repo Hub: one Ubuntu EC2 instance that
+  installs Docker, clones the repository and starts the RAG assistant with
+  deploy/install_on_ubuntu.sh. The first start builds the vector database
+  (20-40 minutes); afterwards the app answers at the URL in the Outputs tab.
+
+Parameters:
+  GroqApiKeys:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: >-
+      Groq API key(s), comma-separated, tried in order. Leave empty for
+      search-only mode (no LLM answers).
+  InstanceType:
+    Type: String
+    Default: t3.large
+    AllowedValues: [t3.large, t3.xlarge, c5.xlarge, c5.2xlarge, m5.large, m5.xlarge]
+    Description: 2 vCPU / 8 GB is the minimum; 4 vCPU halves the first database build.
+  KeyPairName:
+    Type: String
+    Default: ""
+    Description: Name of an existing EC2 key pair for SSH access (optional).
+  AllowedCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    AllowedPattern: ^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$
+    Description: Who may reach SSH and the web UI (your IP/32 is safest).
+  AppPort:
+    Type: Number
+    Default: 8000
+    MinValue: 1024
+    MaxValue: 65535
+  RepoUrl:
+    Type: String
+    Default: https://github.com/manyaagarwal23/disaster-response-intelligence-repo-hub.git
+  RepoRef:
+    Type: String
+    Default: main
+    Description: Branch or tag to deploy.
+  LatestUbuntuAmi:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+    Description: Resolved automatically to the current Ubuntu 24.04 image in this region.
+
+Conditions:
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
+  HasGroqKeys: !Not [!Equals [!Ref GroqApiKeys, ""]]
+
+Resources:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RAG assistant - SSH and the web UI
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowedCidr
+          Description: SSH
+        - IpProtocol: tcp
+          FromPort: !Ref AppPort
+          ToPort: !Ref AppPort
+          CidrIp: !Ref AllowedCidr
+          Description: Web UI and API
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-sg"
+
+  # The Groq key(s) never appear in user data (which any process on the
+  # instance and anyone with ec2:DescribeInstanceAttribute can read): they
+  # are stored in Secrets Manager and fetched at boot with the instance role.
+  GroqSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: HasGroqKeys
+    Properties:
+      Name: !Sub "${AWS::StackName}/groq-api-keys"
+      Description: Groq API keys for the RAG assistant, comma-separated, tried in order
+      SecretString: !Ref GroqApiKeys
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - !If
+          - HasGroqKeys
+          - PolicyName: read-groq-secret
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action: secretsmanager:GetSecretValue
+                  Resource: !Ref GroqSecret
+          - !Ref AWS::NoValue
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InstanceRole
+
+  Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      IamInstanceProfile: !Ref InstanceProfile
+      ImageId: !Ref LatestUbuntuAmi
+      InstanceType: !Ref InstanceType
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref "AWS::NoValue"]
+      SecurityGroupIds:
+        - !GetAtt SecurityGroup.GroupId
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 20
+            VolumeType: gp3
+            DeleteOnTermination: true
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            # Everything below is logged to /var/log/rag-install.log, including failures
+            exec > >(tee -a /var/log/rag-install.log) 2>&1
+            set -euo pipefail
+            trap 'echo "[deploy] FAILED at line $LINENO (exit $?)"' ERR
+            export PORT='${AppPort}'
+            export REPO_URL='${RepoUrl}'
+            export REPO_REF='${RepoRef}'
+            export APP_DIR=/opt/disaster-response-rag
+            apt-get update -qq
+            apt-get install -y -qq git awscli
+            if [ -n '${SecretId}' ]; then
+                echo "[deploy] reading the Groq key(s) from Secrets Manager"
+                GROQ_API_KEYS=$(aws secretsmanager get-secret-value --region '${AWS::Region}' \
+                    --secret-id '${SecretId}' --query SecretString --output text)
+                export GROQ_API_KEYS
+            fi
+            git clone -q --branch "$REPO_REF" --depth 1 "$REPO_URL" "$APP_DIR"
+            bash "$APP_DIR/deploy/install_on_ubuntu.sh"
+          - SecretId: !If [HasGroqKeys, !Ref GroqSecret, ""]
+
+Outputs:
+  AppUrl:
+    Description: The assistant (ready when /healthz reports database_ready true, 20-40 min after creation)
+    Value: !Sub "http://${Instance.PublicIp}:${AppPort}"
+  HealthUrl:
+    Value: !Sub "http://${Instance.PublicIp}:${AppPort}/healthz"
+  SshCommand:
+    Condition: HasKeyPair
+    Value: !Sub "ssh -i ${KeyPairName}.pem ubuntu@${Instance.PublicIp}"
+  InstallLog:
+    Description: Follow the first-start progress after SSH-ing in
+    Value: "sudo tail -f /var/log/rag-install.log; docker compose -f /opt/disaster-response-rag/docker-compose.yml logs -f"
+  GroqSecretArn:
+    Condition: HasGroqKeys
+    Description: Where the key(s) live; rotate them here, then restart the app (docker compose up -d)
+    Value: !Ref GroqSecret

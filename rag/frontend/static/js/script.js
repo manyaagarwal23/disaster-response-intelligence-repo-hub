@@ -1,285 +1,606 @@
-// Initialize Mermaid
-if (window.mermaid) {
-    mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+// Disaster Response Intelligence Repo Hub — frontend
+// Talks to:  POST /api/ask   GET /api/search   GET /api/stats
+
+const USHAHIDI_REPO = 'https://github.com/ushahidi/platform';
+const THEME_KEY = 'drih-theme';
+let appStats = null;
+
+// ------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+
+function escapeHtml(text) {
+    return String(text ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// Tab Switching Logic
+// Render LLM markdown and strip anything dangerous (scripts, handlers)
+function renderMarkdown(text) {
+    const html = window.marked ? marked.parse(String(text ?? '')) : escapeHtml(text);
+    return window.DOMPurify ? DOMPurify.sanitize(html) : escapeHtml(text);
+}
+
+// Syntax-highlight every <pre><code> inside `root`. highlight.js only adds
+// <span> tags to already-escaped text, so it is safe on sanitized HTML.
+function highlightCode(root) {
+    if (!window.hljs) return;
+    root.querySelectorAll('pre code').forEach(el => {
+        try { hljs.highlightElement(el); } catch (e) { /* leave plain text */ }
+    });
+}
+
+function fmtMs(ms) {
+    if (ms == null) return '–';
+    return ms >= 1000 ? (ms / 1000).toFixed(1) + ' s' : Math.round(ms) + ' ms';
+}
+
+function fmtNum(n) {
+    return Number(n || 0).toLocaleString();
+}
+
+function githubUrl(file, start, end) {
+    const ref = (appStats && appStats.ushahidi_commit) || 'develop';
+    let url = `${USHAHIDI_REPO}/blob/${ref}/${file}`;
+    if (start) url += `#L${start}` + (end && end !== start ? `-L${end}` : '');
+    return url;
+}
+
+let toastTimer = null;
+function showToast(message, icon = 'ph-check-circle') {
+    const toast = $('toast');
+    if (!toast) return;
+    toast.innerHTML = `<i class="ph ${icon}"></i>${escapeHtml(message)}`;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+// ------------------------------------------------------------
+// Theme (dark by default, light on request; remembered per browser)
+// ------------------------------------------------------------
+function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+}
+
+function applyTheme(theme) {
+    if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* storage unavailable */ }
+    const button = $('themeToggle');
+    if (button) {
+        button.innerHTML = theme === 'light'
+            ? '<i class="ph ph-moon"></i><span>Dark</span>'
+            : '<i class="ph ph-sun"></i><span>Light</span>';
+    }
+}
+
+function toggleTheme() {
+    applyTheme(currentTheme() === 'light' ? 'dark' : 'light');
+}
+
+// ------------------------------------------------------------
+// Tabs
+// ------------------------------------------------------------
 function switchTab(tabId) {
-    // Remove active class from all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-
-    // Add active class to clicked tab
-    document.getElementById(tabId).classList.add('active');
-    
-    // Find the corresponding button and make it active
-    const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.getAttribute('onclick').includes(tabId));
-    if (activeBtn) activeBtn.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.toggle('active', tab.id === tabId));
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
+    const focus = { home: 'searchInput', codesearch: 'codeSearchInput' }[tabId];
+    if (focus) setTimeout(() => $(focus).focus(), 50);
 }
 
-// Fill Search Bar from Suggestion Chips
+// ------------------------------------------------------------
+// System status (sidebar + hero numbers)
+// ------------------------------------------------------------
+// Right after a (re)start the server is still loading the embedding model,
+// so keep retrying for a while before declaring the index unavailable.
+async function loadStats(attempt = 1) {
+    try {
+        const response = await fetch('/api/stats');
+        if (!response.ok) throw new Error((await response.json()).error || 'stats unavailable');
+        appStats = await response.json();
+        const byType = appStats.by_type || {};
+        $('statChunks').textContent = fmtNum(appStats.chunks) + ' chunks';
+        $('statModel').textContent = (appStats.llm_model || '').split('/').pop() || '–';
+        $('statCommit').textContent = (appStats.ushahidi_commit || '').slice(0, 8);
+        $('heroChunks').textContent = fmtNum(appStats.chunks);
+        $('heroMethods').textContent = fmtNum((byType.method || 0) + (byType.function || 0));
+        $('heroDocs').textContent = fmtNum(byType.doc || 0);
+        $('heroFiles').textContent = fmtNum(appStats.files);
+        if (appStats.llm_configured) {
+            setStatus('ok', 'Live · LLM + search');
+        } else {
+            setStatus('warn', 'Search-only (no LLM key)');
+        }
+    } catch (error) {
+        if (attempt < 8) {
+            setStatus('warn', 'Loading index…');
+            setTimeout(() => loadStats(attempt + 1), 5000);
+        } else {
+            setStatus('bad', 'Index not ready');
+            $('statChunks').textContent = '–';
+        }
+    }
+}
+
+function setStatus(level, text) {
+    $('statusDot').className = 'status-dot ' + level;
+    $('statusText').textContent = text;
+}
+
+// ------------------------------------------------------------
+// Ask (RAG answer)
+// ------------------------------------------------------------
 function fillSearch(text) {
-    const input = document.getElementById('searchInput');
+    const input = $('searchInput');
     input.value = text;
     input.focus();
-    // Optional: automatically ask the question when chip is clicked
-    // askQuestion();
 }
 
-// Handle asking a question
-async function askQuestion() {
-    const input = document.getElementById('searchInput');
-    const question = input.value.trim();
-    
-    if (!question) return;
+function askSuggestion(text) {
+    fillSearch(text);
+    askQuestion();
+}
 
-    // Clear the input
+function newChat() {
+    $('chatMessages').innerHTML = '';
+    $('chatMessages').classList.add('hidden');
+    $('home').classList.remove('chat-mode');
+    $('chatHeader').classList.remove('minimized');
+    $('suggestionsBox').classList.remove('hidden');
+    $('searchInput').focus();
+}
+
+const PROGRESS_STEPS = [
+    [0, 'Searching the index', 'ph-magnifying-glass'],
+    [1200, 'Reranking the top 10 with the LLM', 'ph-sort-ascending'],
+    [4500, 'Writing the answer and drawing the diagram', 'ph-brain'],
+];
+
+function pipelineHtml() {
+    return `<div class="pipeline" role="status">${PROGRESS_STEPS.map(([, label, icon], i) => `
+        <div class="step ${i === 0 ? 'active' : ''}" data-step="${i}">
+            <span class="step-icon"><i class="ph ${icon}"></i></span>
+            <span class="typing-status">${label}</span>
+            ${i === 0 ? '<span class="typing-indicator"><span></span><span></span><span></span></span>' : ''}
+        </div>`).join('')}</div>`;
+}
+
+function setPipelineStep(aiMsg, index) {
+    aiMsg.querySelectorAll('.step').forEach((el, i) => {
+        el.classList.toggle('done', i < index);
+        el.classList.toggle('active', i === index);
+    });
+    const dots = aiMsg.querySelector('.typing-indicator');
+    const active = aiMsg.querySelector('.step.active');
+    if (dots && active && !active.contains(dots)) active.appendChild(dots);
+}
+
+async function askQuestion() {
+    const input = $('searchInput');
+    const question = input.value.trim();
+    if (!question) return;
     input.value = '';
 
-    // Transform UI to Chat Mode (ChatGPT style)
-    document.getElementById('home').classList.add('chat-mode');
-    document.getElementById('chatHeader').classList.add('minimized');
-    document.getElementById('suggestionsBox').classList.add('hidden');
-    
-    const chatMessages = document.getElementById('chatMessages');
+    // Switch the page into chat mode
+    $('home').classList.add('chat-mode');
+    $('chatHeader').classList.add('minimized');
+    $('suggestionsBox').classList.add('hidden');
+    const chatMessages = $('chatMessages');
     chatMessages.classList.remove('hidden');
 
-    // 1. Append User Message Bubble
+    // User bubble
     const userMsg = document.createElement('div');
     userMsg.className = 'message user';
     userMsg.innerHTML = `
         <div class="msg-avatar"><i class="ph ph-user"></i></div>
-        <div class="msg-content">${question}</div>
-    `;
+        <div class="msg-content">${escapeHtml(question)}</div>`;
     chatMessages.appendChild(userMsg);
 
-    // Scroll to bottom
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-
-    // 2. Append AI Loading Bubble
+    // AI bubble with pipeline progress
     const aiMsgId = 'ai-msg-' + Date.now();
     const aiMsg = document.createElement('div');
     aiMsg.className = 'message ai';
     aiMsg.id = aiMsgId;
     aiMsg.innerHTML = `
         <div class="msg-avatar"><i class="ph ph-robot"></i></div>
-        <div class="msg-content">
-            <div class="typing-indicator"><span></span><span></span><span></span></div>
-        </div>
-    `;
+        <div class="msg-content">${pipelineHtml()}</div>`;
     chatMessages.appendChild(aiMsg);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
-    // 3. Fetch from backend
+    const timers = PROGRESS_STEPS.slice(1).map(([delay], i) => setTimeout(() => setPipelineStep(aiMsg, i + 1), delay));
+
+    const content = aiMsg.querySelector('.msg-content');
+    const started = performance.now();
+    let data;
     try {
         const response = await fetch('/api/ask', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question: question })
+            body: JSON.stringify({ question }),
         });
-
-        if (!response.ok) throw new Error('Network error');
-        
-        const data = await response.json();
-        
-        try {
-            // Attempt to parse the LLM's JSON string from data.answer
-            let jsonString = data.answer;
-            // The LLM might output text before or after the JSON, let's extract the JSON block
-            const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
-            if (jsonMatch) jsonString = jsonMatch[0];
-            
-            const parsed = JSON.parse(jsonString);
-            renderRichAnswer(aiMsgId, parsed);
-            
-            // Add to History Tab secretly in the background
-            addToHistory(question, parsed.simple || "Answer generated successfully.");
-        } catch (e) {
-            console.error("Failed to parse JSON response, falling back to markdown", e);
-            let text = data.answer;
-            if (window.marked) text = marked.parse(text);
-            document.querySelector(`#${aiMsgId} .msg-content`).innerHTML = text;
-            
-            // Add to History Tab (fallback)
-            addToHistory(question, data.answer || "Answer generated successfully.");
+        data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || (data.detail && JSON.stringify(data.detail)) || `Server returned HTTP ${response.status}`);
         }
-
     } catch (error) {
-        // Fallback for demo if backend errors
-        const fallbackText = "This is a simulated AI response to your question. Once we integrate the backend fully, this will pull real source code references from ChromaDB and answer using the Groq LLM!";
-        document.querySelector(`#${aiMsgId} .msg-content`).innerHTML = `<p>${fallbackText}</p>`;
-        addToHistory(question, fallbackText);
+        timers.forEach(clearTimeout);
+        // Show the real problem - never a fake answer
+        content.innerHTML = renderErrorCard(error.message || 'Could not reach the server.');
+        addToHistory(question, `Error: ${error.message}`);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return;
     }
+    timers.forEach(clearTimeout);
 
-    // Scroll to bottom after answer loads
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    data.clientMs = Math.round(performance.now() - started);
+    renderRichAnswer(aiMsgId, data);
+    $('statLatency').textContent = fmtMs((data.timings && data.timings.total_ms) || data.clientMs);
+
+    addToHistory(question, (data.answer && data.answer.simple) || data.warning || 'Search results returned.');
+    chatMessages.scrollTop = aiMsg.offsetTop - 12;
 }
 
-// Add item to Chat History Tab (in the background)
+function renderErrorCard(message) {
+    return `
+        <div class="info-card error-card">
+            <div class="card-header error-header"><i class="ph ph-warning"></i> Something went wrong</div>
+            <div class="card-body">${escapeHtml(message)}</div>
+        </div>`;
+}
+
+// data = { answer: {simple, technical, diagram_type, diagram_code, fallback_diagram_code} | null,
+//          sources: [{file, start_line, end_line, class, method, type, score, content}],
+//          llm_used, warning, timings }
+function renderRichAnswer(aiMsgId, data) {
+    const container = document.querySelector(`#${aiMsgId} .msg-content`);
+    const answer = data.answer || {};
+    const sources = data.sources || [];
+    const t = data.timings || {};
+
+    let html = `<div class="answer-meta">`;
+    html += `<span class="meta-chip strong"><i class="ph ph-timer"></i> ${fmtMs(t.total_ms ?? data.clientMs)}</span>`;
+    if (t.retrieval_ms != null) html += `<span class="meta-chip" title="vector + hybrid search"><i class="ph ph-magnifying-glass"></i> search ${fmtMs(t.retrieval_ms)}</span>`;
+    if (data.llm_used) {
+        html += `<span class="meta-chip" title="LLM reranking of the top 10"><i class="ph ph-sort-ascending"></i> rerank ${fmtMs(t.rerank_ms)}</span>`;
+        html += `<span class="meta-chip" title="LLM answer generation"><i class="ph ph-brain"></i> answer ${fmtMs(t.generation_ms)}</span>`;
+    }
+    html += `<span class="meta-chip"><i class="ph ph-files"></i> ${sources.length} sources</span>`;
+    if (data.llm_provider && String(data.llm_provider).startsWith('ollama')) {
+        html += `<span class="meta-chip strong" title="Every Groq key was rate-limited, so the local model wrote this answer"><i class="ph ph-cpu"></i> local ${escapeHtml(String(data.llm_provider).split(':').slice(1).join(':'))}</span>`;
+    } else if (data.llm_provider && String(data.llm_provider).startsWith('groq#')) {
+        html += `<span class="meta-chip" title="Which Groq key answered"><i class="ph ph-key"></i> key ${escapeHtml(String(data.llm_provider).slice(5))}</span>`;
+    }
+    if (answer.simple) html += `<button class="icon-btn" onclick="copyAnswer(this)" title="Copy the answer as text"><i class="ph ph-copy"></i> Copy</button>`;
+    html += `</div><div class="answer-stack">`;
+
+    if (data.warning) {
+        html += `
+            <div class="info-card warning-card">
+                <div class="card-header warning-header"><i class="ph ph-warning-circle"></i> ${data.llm_used ? 'Note' : 'Search results only'}</div>
+                <div class="card-body">${escapeHtml(data.warning)}</div>
+            </div>`;
+    }
+
+    if (answer.simple) {
+        html += `
+            <div class="info-card simple-card">
+                <div class="card-header blue-header"><i class="ph ph-info"></i> AI Summary</div>
+                <div class="card-body markdown-body" data-copy>${renderMarkdown(answer.simple)}</div>
+            </div>`;
+    }
+
+    if (answer.technical) {
+        html += `
+            <div class="info-card technical-card">
+                <div class="card-header violet-header"><i class="ph ph-code"></i> Technical Details</div>
+                <div class="card-body markdown-body" data-copy>${renderMarkdown(answer.technical)}</div>
+            </div>`;
+    }
+
+    const hasDiagram = Boolean(answer.diagram_code || answer.fallback_diagram_code);
+    if (hasDiagram) {
+        html += `
+            <div class="info-card diagram-container teal-card" style="display: none;">
+                <div class="card-header teal-header">
+                    <i class="ph ph-tree-structure"></i> Architecture Visualization
+                    <div class="card-actions"><button class="card-action" onclick="openDiagramModal(this)"><i class="ph ph-arrows-out"></i> Expand</button></div>
+                </div>
+                <div class="card-body mermaid"></div>
+            </div>`;
+    }
+
+    if (sources.length > 0) {
+        html += `
+            <div class="info-card sources-container green-card">
+                <div class="card-header green-header" onclick="toggleSources(this)">
+                    <i class="ph ph-file-code"></i> Repository Evidence
+                    <span class="pill">${sources.length} retrieved chunks</span>
+                    <i class="ph ph-caret-down caret"></i>
+                </div>
+                <div class="sources-list ${answer.simple ? 'hidden' : ''}">
+                    ${sources.map((s, i) => sourceItemHtml(s, i + 1)).join('')}
+                </div>
+            </div>`;
+    }
+
+    html += `</div>`;
+    container.innerHTML = html;
+    highlightCode(container);
+
+    if (hasDiagram) {
+        // LLM diagram first; the backup built from retrieved code if it fails
+        renderDiagram(container, [answer.diagram_code, answer.fallback_diagram_code]);
+    }
+}
+
+// One retrieved chunk / search hit, shared by evidence lists and Code Search
+function sourceItemHtml(s, rank, withExplain = false) {
+    const lines = s.start_line ? `L${s.start_line}${s.end_line && s.end_line !== s.start_line ? '–' + s.end_line : ''}` : '';
+    const context = [s.class, s.method].filter(Boolean).join('::');
+    const pct = Math.max(4, Math.min(100, Math.round((s.score || 0) * 100)));
+    const file = String(s.file || '');
+    const slash = file.lastIndexOf('/');
+    const dir = slash >= 0 ? file.slice(0, slash + 1) : '';
+    const name = slash >= 0 ? file.slice(slash + 1) : file;
+    const type = String(s.type || '').toLowerCase();
+    const language = type === 'doc' ? 'markdown' : 'php';
+    const explain = withExplain
+        ? `<div class="source-actions"><button onclick="explainResult(${JSON.stringify(file)}, ${JSON.stringify(context)})"><i class="ph ph-sparkle"></i> Explain with AI</button></div>`
+        : '';
+    return `
+        <details class="source-item">
+            <summary>
+                <div class="source-top">
+                    <span class="source-rank">${rank}</span>
+                    <span class="source-file"><i class="ph ${type === 'doc' ? 'ph-file-text' : 'ph-file-php'}"></i><span class="dir">${escapeHtml(dir)}</span><span class="name">${escapeHtml(name)}</span></span>
+                    ${lines ? `<span class="source-lines">${lines}</span>` : ''}
+                    <a class="source-link" href="${githubUrl(file, s.start_line, s.end_line)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="ph ph-github-logo"></i> GitHub</a>
+                </div>
+                <div class="source-bottom">
+                    ${context ? `<span class="source-context">${escapeHtml(context)}</span>` : ''}
+                    ${type ? `<span class="source-type ${escapeHtml(type)}">${escapeHtml(type)}</span>` : ''}
+                    ${s.score != null ? `<span class="score"><span class="score-bar"><span style="width:${pct}%"></span></span>${Number(s.score).toFixed(2)}</span>` : ''}
+                </div>
+            </summary>
+            <pre class="source-code"><code class="language-${language}">${escapeHtml(s.content)}</code></pre>
+            ${explain}
+        </details>`;
+}
+
+function copyAnswer(button) {
+    const card = button.closest('.msg-content');
+    const text = Array.from(card.querySelectorAll('[data-copy]')).map(el => el.innerText).join('\n\n');
+    navigator.clipboard.writeText(text).then(() => {
+        button.innerHTML = '<i class="ph ph-check"></i> Copied';
+        showToast('Answer copied to the clipboard');
+        setTimeout(() => { button.innerHTML = '<i class="ph ph-copy"></i> Copy'; }, 1500);
+    }).catch(() => showToast('Could not access the clipboard', 'ph-warning'));
+}
+
+// ------------------------------------------------------------
+// Diagrams
+// ------------------------------------------------------------
+// Mermaid must measure text while drawing, which fails inside a hidden
+// element. So draw with mermaid.render() (its own temporary element),
+// then insert the finished SVG and show the card.
+let diagramCounter = 0;
+
+async function renderDiagram(container, candidates) {
+    const containerEl = container.querySelector('.diagram-container');
+    const mermaidEl = container.querySelector('.mermaid');
+
+    if (!window.mermaid) {
+        console.warn('Mermaid library did not load - diagram not shown');
+        containerEl.remove();
+        return;
+    }
+
+    // "strict" stops LLM-generated diagrams from running scripts
+    mermaid.initialize({ startOnLoad: false, theme: currentTheme() === 'light' ? 'neutral' : 'dark', securityLevel: 'strict' });
+
+    for (const candidate of candidates) {
+        if (!candidate) continue;
+
+        // The LLM sometimes wraps the code in ```mermaid fences anyway
+        const code = String(candidate)
+            .replace(/^\s*```(?:mermaid)?\s*/i, '')
+            .replace(/\s*```\s*$/, '')
+            .trim();
+
+        const id = 'diagram-svg-' + (++diagramCounter);
+        try {
+            const { svg } = await mermaid.render(id, code);
+            mermaidEl.innerHTML = svg;   // securityLevel 'strict' already sanitized it
+            containerEl.style.display = 'block';
+            return;
+        } catch (e) {
+            console.warn('Mermaid diagram could not be rendered, trying backup', e);
+            document.getElementById('d' + id)?.remove();
+            document.getElementById(id)?.remove();
+        }
+    }
+
+    // Neither the LLM diagram nor the backup could be drawn
+    containerEl.remove();
+}
+
+function openDiagramModal(button) {
+    const svg = button.closest('.diagram-container').querySelector('.mermaid').innerHTML;
+    const modal = $('diagramModal');
+    modal.querySelector('.modal-body').innerHTML = svg;
+    modal.classList.remove('hidden');
+}
+
+function closeDiagramModal() {
+    const modal = $('diagramModal');
+    modal.classList.add('hidden');
+    modal.querySelector('.modal-body').innerHTML = '';
+}
+
+window.toggleSources = function (header) {
+    const list = header.nextElementSibling;
+    const caret = header.querySelector('.caret');
+    list.classList.toggle('hidden');
+    caret.style.transform = list.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+};
+
+// ------------------------------------------------------------
+// Code Search (instant, no LLM)
+// ------------------------------------------------------------
+async function runCodeSearch() {
+    const query = $('codeSearchInput').value.trim();
+    const k = $('codeSearchK').value;
+    const meta = $('codeSearchMeta');
+    const list = $('codeSearchResults');
+    if (!query) return;
+
+    meta.innerHTML = `<span class="typing-indicator"><span></span><span></span><span></span></span> Searching…`;
+    const started = performance.now();
+    try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&k=${encodeURIComponent(k)}`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `Server returned HTTP ${response.status}`);
+
+        const ms = Math.round(performance.now() - started);
+        meta.innerHTML = `<span class="meta-chip strong"><i class="ph ph-lightning"></i> ${data.results.length} results in ${fmtMs(ms)}</span>
+                          <span class="meta-chip"><i class="ph ph-magnifying-glass"></i> retrieval ${fmtMs(data.timings && data.timings.retrieval_ms)}</span>
+                          <span>for “${escapeHtml(query)}”</span>`;
+        list.innerHTML = data.results.length
+            ? data.results.map((s, i) => sourceItemHtml(s, i + 1, true)).join('')
+            : `<div class="empty-state"><i class="ph ph-binoculars"></i>Nothing matched. Try describing what the code does.</div>`;
+        highlightCode(list);
+    } catch (error) {
+        meta.innerHTML = '';
+        list.innerHTML = renderErrorCard(error.message);
+    }
+}
+
+function explainResult(file, context) {
+    switchTab('home');
+    askSuggestion(context ? `Explain ${context} in ${file}` : `Explain the file ${file}`);
+}
+
+// ------------------------------------------------------------
+// History: saved in localStorage so it survives a page refresh.
+// Wrapped in try/catch because storage can be unavailable.
+// ------------------------------------------------------------
+const HISTORY_KEY = 'drih-chat-history-v1';
+const HISTORY_LIMIT = 100;
+
+function loadSavedHistory() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        return Array.isArray(saved) ? saved : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveHistoryEntry(question, answer) {
+    try {
+        const saved = loadSavedHistory();
+        saved.push({ question, answer, time: new Date().toISOString() });
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(saved.slice(-HISTORY_LIMIT)));
+    } catch (e) {
+        console.warn('Could not save chat history', e);
+    }
+}
+
 function addToHistory(question, answer) {
-    const historyList = document.getElementById('chatHistoryList');
-    
-    // Remove empty state if present
+    saveHistoryEntry(question, answer);
+    renderHistoryItem(question, answer, new Date().toISOString());
+}
+
+function renderHistoryItem(question, answer, time) {
+    const historyList = $('chatHistoryList');
     const emptyState = historyList.querySelector('.empty-state');
     if (emptyState) emptyState.remove();
 
-    let displayAnswer = answer;
-    if (window.marked && answer) {
-        displayAnswer = marked.parse(answer);
-    }
-
-    const historyItem = document.createElement('div');
-    historyItem.className = 'history-item';
-    historyItem.innerHTML = `
-        <div class="history-item-q" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="this.nextElementSibling.classList.toggle('hidden')">
-            <div style="display: flex; align-items: center; gap: 0.5rem;"><i class="ph ph-user"></i> ${question}</div>
+    const when = time ? new Date(time).toLocaleString() : '';
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+        <div class="history-item-q" style="cursor: pointer;" onclick="this.nextElementSibling.classList.toggle('hidden')">
+            <i class="ph ph-user"></i> ${escapeHtml(question)}
+            <span class="history-time">${escapeHtml(when)}</span>
             <i class="ph ph-caret-down"></i>
         </div>
-        <div class="history-item-a hidden" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--glass-border);">
-            <i class="ph ph-robot"></i> 
-            <div style="flex: 1;" class="mode-content">${displayAnswer}</div>
-        </div>
-    `;
-    
-    // Add to top of list
-    historyList.prepend(historyItem);
+        <div class="history-item-a hidden" style="margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--border);">
+            <i class="ph ph-robot"></i>
+            <div style="flex: 1;" class="markdown-body">${renderMarkdown(answer)}</div>
+        </div>`;
+    historyList.prepend(item);
+    updateHistoryCount();
 }
 
-// Allow pressing Enter to submit
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        askQuestion();
-    }
-});
+function updateHistoryCount() {
+    const n = document.querySelectorAll('#chatHistoryList .history-item').length;
+    $('historyCount').textContent = `${n} saved`;
+    const nav = $('navHistoryCount');
+    if (nav) nav.textContent = String(n);
+}
 
-// Make Questions Tab items clickable
+function clearHistory() {
+    try { localStorage.removeItem(HISTORY_KEY); } catch (e) { /* ignore */ }
+    $('chatHistoryList').innerHTML = '<div class="empty-state"><i class="ph ph-clock-counter-clockwise"></i>No questions asked yet. Start on the Ask tab.</div>';
+    updateHistoryCount();
+    showToast('History cleared', 'ph-trash');
+}
+
+// ------------------------------------------------------------
+// Init
+// ------------------------------------------------------------
+const PLACEHOLDERS = [
+    'Ask anything about the Ushahidi codebase…',
+    'Where is an incoming SMS report parsed?',
+    'How does the V5 posts API check permissions?',
+    'What does the UpdateUsecase do?',
+    'Which data source plugins exist?',
+];
+
 document.addEventListener('DOMContentLoaded', () => {
+    applyTheme(currentTheme());
+    loadStats();
+
+    // Restore saved history (oldest first, so the newest ends up on top)
+    loadSavedHistory().forEach(entry => renderHistoryItem(entry.question, entry.answer, entry.time));
+    updateHistoryCount();
+
+    $('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') askQuestion(); });
+    $('codeSearchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') runCodeSearch(); });
+
+    // Rotate example questions in the empty, unfocused search box
+    let placeholderIndex = 0;
+    setInterval(() => {
+        const input = $('searchInput');
+        if (document.activeElement === input || input.value) return;
+        placeholderIndex = (placeholderIndex + 1) % PLACEHOLDERS.length;
+        input.placeholder = PLACEHOLDERS[placeholderIndex];
+    }, 3500);
+
+    // Test Dataset questions are clickable
     document.querySelectorAll('.dataset-list li').forEach(li => {
-        li.style.cursor = 'pointer';
         li.addEventListener('click', () => {
-            // Switch to home tab
             switchTab('home');
-            
-            // Set the search input and ask the question
-            const input = document.getElementById('searchInput');
-            input.value = li.innerText;
+            fillSearch(li.innerText.trim());
             askQuestion();
         });
-        
-        // Add a nice hover effect
-        li.addEventListener('mouseover', () => li.style.color = 'var(--accent)');
-        li.addEventListener('mouseout', () => li.style.color = '');
+    });
+
+    // Keyboard: "/" or Ctrl/Cmd+K focuses the active search box, Esc closes the diagram
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeDiagramModal();
+        const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+        const wantsFocus = (e.key === '/' && !typing) || (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey));
+        if (wantsFocus) {
+            e.preventDefault();
+            const active = document.querySelector('.tab-content.active');
+            (active && active.id === 'codesearch' ? $('codeSearchInput') : $('searchInput')).focus();
+        }
     });
 });
-
-// Rich Answer Rendering
-function renderRichAnswer(aiMsgId, data) {
-    const container = document.querySelector(`#${aiMsgId} .msg-content`);
-    
-    let html = `
-        <div class="answer-stack">
-            <!-- Simple Summary Box (Blue) -->
-            ${data.simple ? `
-            <div class="info-card simple-card">
-                <div class="card-header blue-header">
-                    <i class="ph ph-info"></i> AI Summary
-                </div>
-                <div class="card-body markdown-body">
-                    ${window.marked ? marked.parse(data.simple) : data.simple}
-                </div>
-            </div>` : ''}
-            
-            <!-- Technical Details Box (Violet) -->
-            ${data.technical ? `
-            <div class="info-card technical-card">
-                <div class="card-header violet-header">
-                    <i class="ph ph-code"></i> Technical Details
-                </div>
-                <div class="card-body markdown-body">
-                    ${window.marked ? marked.parse(data.technical) : data.technical}
-                </div>
-            </div>` : ''}
-    `;
-
-    // Add Mermaid Diagram if exists (Teal)
-    if (data.diagram_type === 'mermaid' && data.diagram_code) {
-        const diagramId = 'mermaid-' + Date.now();
-        html += `
-            <div class="info-card diagram-container teal-card" id="container-${diagramId}" style="display: none;">
-                <div class="card-header teal-header"><i class="ph ph-projector-screen-chart"></i> Architecture Visualization</div>
-                <div class="card-body mermaid" id="${diagramId}">
-                    ${data.diagram_code}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Add Sources (Green)
-    if (data.sources && data.sources.length > 0) {
-        html += `
-            <div class="info-card sources-container green-card">
-                <div class="card-header green-header" onclick="toggleSources(this)" style="cursor: pointer; display: flex; justify-content: space-between;">
-                    <div><i class="ph ph-file-code"></i> <span>Repository Evidence (${data.sources.length} files)</span></div>
-                    <i class="ph ph-caret-down caret"></i>
-                </div>
-                <div class="sources-list hidden">
-        `;
-        data.sources.forEach(s => {
-            html += `
-                <div class="source-item">
-                    <span class="source-file"><i class="ph ph-file-php"></i> ${s.file}</span>
-                    <span class="source-context">${s.context}</span>
-                </div>
-            `;
-        });
-        html += `</div></div>`;
-    }
-
-    html += `</div>`; // Close answer-stack
-
-    container.innerHTML = html;
-
-    // Initialize mermaid if present
-    if (data.diagram_type === 'mermaid' && window.mermaid) {
-        setTimeout(() => {
-            const mermaidEl = document.querySelector(`#${aiMsgId} .mermaid`);
-            const containerEl = document.querySelector(`#${aiMsgId} .diagram-container`);
-            if (!mermaidEl || !containerEl) return;
-            
-            try {
-                // Initialize mermaid on this specific element
-                mermaid.init(undefined, mermaidEl);
-                
-                // Check if Mermaid injected its ugly red error SVG anyway
-                if (mermaidEl.innerHTML.includes('Syntax error') || mermaidEl.innerHTML.includes('Parse error')) {
-                    console.warn("Mermaid generated an error graphic due to LLM hallucination. Hiding container.");
-                    containerEl.remove(); // Silently destroy it
-                } else {
-                    // Success! Show the beautiful diagram
-                    containerEl.style.display = 'block';
-                }
-            } catch (e) {
-                console.error("Mermaid parsing failed", e);
-                containerEl.remove();
-            }
-        }, 100);
-    }
-}
-
-
-
-window.toggleSources = function(header) {
-    const list = header.nextElementSibling;
-    const caret = header.querySelector('.caret');
-    if (list.classList.contains('hidden')) {
-        list.classList.remove('hidden');
-        caret.style.transform = 'rotate(180deg)';
-    } else {
-        list.classList.add('hidden');
-        caret.style.transform = 'rotate(0deg)';
-    }
-};
